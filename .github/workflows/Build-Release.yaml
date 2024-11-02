@@ -33,7 +33,7 @@ jobs:
       - name: Make ZIP
         run: |
           mv ${{github.workspace}}/Build/_deps/ctrl-build/libCTRL.a ${{github.workspace}}/Build/libCTRL.a
-          cp ${{github.workspace}}/Include/dlfcn.h ${{github.workspace}}/Build/dlfcn.h
+          cp Include/dlfcn.h ${{github.workspace}}/Build/dlfcn.h
           zip -j CTRDL-${{github.sha}}.zip ${{github.workspace}}/Build/lib*.a ${{github.workspace}}/Build/dlfcn.h ${{github.workspace}}/Build/Tests/dl-test-*.3dsx
 
       - name: Upload Assets
