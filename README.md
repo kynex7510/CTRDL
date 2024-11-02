@@ -2,12 +2,13 @@
 
 This library provides an implementation of common `dl*` APIs along with custom additions, which can be used for loading and executing ELF files on the Nintendo 3DS.
 
-## Build
+## How-to
+
+Download a [prebuilt](https://github.com/kynex7510/CTRDL/releases) version, use as a CMake dependency, or build manually:
 
 ```
-mkdir Build
-cd Build
-$DEVKITPRO/devkitARM/bin/arm-none-eabi-cmake --toolchain "$DEVKITPRO/cmake/3DS.cmake" ..
+cmake -B Build -G "Unix Makefiles" -DCMAKE_TOOLCHAIN_FILE="$DEVKITPRO/cmake/3DS.cmake" -DCMAKE_BUILD_TYPE=Release
+cmake --build Build --config Release
 ```
 
 ## Limitations
