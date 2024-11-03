@@ -22,6 +22,8 @@ Elf32_Word ctrdl_getELFSymNameHash(const char* name) {
 }
 
 bool ctrdl_parseELF(CTRDLStream* stream, CTRDLElf* out) {
+    memset(out, 0, sizeof(CTRDLElf));
+
     // Read header.
     if (!stream->seek(stream, 0)) {
         ctrdl_setLastError(Err_ReadFailed);
