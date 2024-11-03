@@ -9,6 +9,7 @@ Download a [prebuilt](https://github.com/kynex7510/CTRDL/releases) version, use 
 ```
 cmake -B Build -G "Unix Makefiles" -DCMAKE_TOOLCHAIN_FILE="$DEVKITPRO/cmake/3DS.cmake" -DCMAKE_BUILD_TYPE=Release
 cmake --build Build --config Release
+cmake --install Build --prefix Build/Release
 ```
 
 ## Limitations

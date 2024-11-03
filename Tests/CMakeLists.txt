@@ -8,6 +8,8 @@ project(dl-test)
 # $DEVKITPRO/devkitARM/bin/arm-none-eabi-gcc -fPIC -shared Math.c -o Math.so
 # add_library(math SHARED Math.c)
 
-add_executable("${PROJECT_NAME}-path" Path.c)
-target_link_libraries("${PROJECT_NAME}-path" PUBLIC dl)
-ctr_create_3dsx("${PROJECT_NAME}-path")
+add_executable(dl-test-path Path.c)
+target_link_libraries(dl-test-path PUBLIC dl)
+ctr_create_3dsx(dl-test-path)
+
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/dl-test-path.3dsx TYPE BIN)

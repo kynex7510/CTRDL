@@ -6,11 +6,8 @@ on:
   pull_request:
     branches: [ main ]
 
-env:
-  BUILD_TYPE: Release
-
 jobs:
-  Build-Release:
+  Build-PreRelease:
     runs-on: ubuntu-latest
     permissions:
       packages: write
@@ -25,24 +22,27 @@ jobs:
           persist-credentials: false
 
       - name: Configure CMake
-        run: cmake -B ${{github.workspace}}/Build -G "Unix Makefiles" -DCMAKE_TOOLCHAIN_FILE="$DEVKITPRO/cmake/3DS.cmake" -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+        run: cmake -B ${{github.workspace}}/Build -G "Unix Makefiles" -DCMAKE_TOOLCHAIN_FILE="$DEVKITPRO/cmake/3DS.cmake" -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
-        run: cmake --build ${{github.workspace}}/Build --config ${{env.BUILD_TYPE}}
+        run: cmake --build ${{github.workspace}}/Build --config Release
+
+      - name: Install
+        run: cmake --install ${{github.workspace}}/Build --prefix ${{github.workspace}}/Build/Release
 
       - name: Make ZIP
         run: |
-          mv ${{github.workspace}}/Build/_deps/ctrl-build/libCTRL.a ${{github.workspace}}/Build/libCTRL.a
-          cp Include/dlfcn.h ${{github.workspace}}/Build/dlfcn.h
-          zip -j CTRDL-${{github.sha}}.zip ${{github.workspace}}/Build/lib*.a ${{github.workspace}}/Build/dlfcn.h ${{github.workspace}}/Build/Tests/dl-test-*.3dsx
+          (cd ${{github.workspace}}/Build/Release && zip -r CTRDL-${{github.sha}}.zip .)
+          mv ${{github.workspace}}/Build/Release/CTRDL-${{github.sha}}.zip .
 
       - name: Upload Assets
         uses: softprops/action-gh-release@v2
         with:
-          name: Release-${{github.sha}}
+          name: PreRelease-${{github.sha}}
           files: CTRDL-${{github.sha}}.zip
           fail_on_unmatched_files: true
-          tag_name: Release-${{github.run_id}}
+          tag_name: PreRelease-${{github.run_id}}
+          prerelease: true
           make_latest: true
           token: ${{secrets.GITHUB_TOKEN}}
           generate_release_notes: true
