@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+__attribute__((weak)) void* ctrdlProgramResolver(const char* symName) { return NULL; }
+
 static bool ctrdl_checkFlags(int flags) {
     // Unsupported flags.
     if (flags & (RTLD_LAZY | RTLD_DEEPBIND | RTLD_NODELETE))
@@ -22,7 +24,10 @@ static bool ctrdl_checkFlags(int flags) {
 void* dlopen(const char* path, int flags) { return ctrdlOpen(path, flags, NULL, NULL); }
 const char* dlerror(void) { return ctrdl_getErrorAsString(ctrdl_getLastError()); }
 
-int dlclose(void* handle) { return !ctrdl_unlockHandle((CTRDLHandle*)handle); }
+int dlclose(void* handle) {
+    // TODO: the pseudo handle should be "freed"?
+    return !ctrdl_unlockHandle((CTRDLHandle*)handle);
+}
 
 void* dlsym(void* handle, const char* name) {
     if (!handle || !name) {
@@ -30,6 +35,36 @@ void* dlsym(void* handle, const char* name) {
         return NULL;
     }
 
+    // Handle main handle (load order).
+    if (handle == CTRDL_MAIN_HANDLE) {
+        // Look into program symbols.
+        void* addr = ctrdlProgramResolver(name);
+
+        if (!addr) {
+            // Look into global objects.
+            ctrdl_acquireHandleMtx();
+
+            for (size_t i = 0; i < ctrdl_unsafeNumHandles(); ++i) {
+                CTRDLHandle* h = ctrdl_unsafeGetHandleByIndex(i);
+                if (h->flags & RTLD_GLOBAL) {
+                    const Elf32_Sym* sym = ctrdl_symNameLookupSingle(h, name);
+                    if (sym) {
+                        addr = (void*)(h->base + sym->st_value);
+                        break;
+                    }
+                }
+            }
+
+            ctrdl_releaseHandleMtx();
+        }
+
+        if (!addr)
+            ctrdl_setLastError(Err_NotFound);
+
+        return addr;
+    }
+
+    // Handle other handles (dep order).
     CTRDLHandle* h = (CTRDLHandle*)handle;
     const Elf32_Sym* sym = ctrdl_symNameLookupDepOrder(h, name);
     if (sym)
@@ -141,7 +176,15 @@ void* ctrdlHandleByAddress(u32 addr) {
     return handle;
 }
 
-void* ctrdlThisHandle(void) { return ctrdlHandleByAddress((u32)__builtin_extract_return_addr(__builtin_return_address(0))); }
+void* ctrdlThisHandle(void) {
+    void* h = ctrdlHandleByAddress((u32)__builtin_extract_return_addr(__builtin_return_address(0)));
+
+    // If this is not being called by an object, return the pseudo handle for the process.
+    if (!h)
+        h = CTRDL_MAIN_HANDLE;
+
+    return h;
+}
 
 void ctrdlEnumerate(CTRDLEnumerateFn callback) {
     if (!callback) {
@@ -149,19 +192,24 @@ void ctrdlEnumerate(CTRDLEnumerateFn callback) {
         return;
     }
 
+    callback(CTRDL_MAIN_HANDLE);
+
     ctrdl_acquireHandleMtx();
 
-    for (size_t i = 0; i < CTRDL_MAX_HANDLES; ++i) {
-        CTRDLHandle* h = ctrdl_unsafeGetHandleByIndex(i);
-        if (h->refc)
-            callback(h);
-    }
+    for (size_t i = 0; i < ctrdl_unsafeNumHandles(); ++i)
+        callback(ctrdl_unsafeGetHandleByIndex(i));
 
     ctrdl_releaseHandleMtx();
 }
 
 bool ctrdlInfo(void* handle, CTRDLInfo* info) {
     if (!handle || !info) {
+        ctrdl_setLastError(Err_InvalidParam);
+        return false;
+    }
+
+    if (handle == CTRDL_MAIN_HANDLE) {
+        // TODO (needs support from CTRL).
         ctrdl_setLastError(Err_InvalidParam);
         return false;
     }

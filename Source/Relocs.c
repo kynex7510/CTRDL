@@ -24,21 +24,25 @@ static u32 ctrdl_resolveSymbol(const RelContext* ctx, Elf32_Word index) {
 
     const char* name = &ctx->elf->stringTable[ctx->elf->symEntries[index].st_name];
 
-    // If we have a resolver, use it first.
+    // If we were given a resolver, use it first.
     if (ctx->resolver) {
         u32 addr = (u32)ctx->resolver(name, ctx->resolverUserData);
         if (addr)
             return addr;
     }
 
+    // Look into program symbols.
+    u32 addr = (u32)ctrdlProgramResolver(name);
+    if (addr)
+        return addr;
+
     // Look into global objects.
     const Elf32_Sym* sym = NULL;
     ctrdl_acquireHandleMtx();
 
-    // TODO: handles are not ordered by load order.
-    for (size_t i = 0; i < CTRDL_MAX_HANDLES; ++i) {
+    for (size_t i = 0; i < ctrdl_unsafeNumHandles(); ++i) {
         CTRDLHandle* h = ctrdl_unsafeGetHandleByIndex(i);
-        if (h->refc && (h->flags & RTLD_GLOBAL)) {
+        if (h->flags & RTLD_GLOBAL) {
             sym = ctrdl_symNameLookupSingle(h, name);
             if (sym)
                 break;
@@ -49,6 +53,7 @@ static u32 ctrdl_resolveSymbol(const RelContext* ctx, Elf32_Word index) {
 
     if (!sym) {
         // Look into dependencies.
+        // TODO: sym info for current module is not setup; do we need to look into ourselves?
         sym = ctrdl_symNameLookupLoadOrder(ctx->handle, name);
     }
 

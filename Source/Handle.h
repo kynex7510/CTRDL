@@ -5,8 +5,10 @@
 
 #include "ELFUtil.h"
 
-#define CTRDL_MAX_HANDLES 16
+#define CTRDL_MAX_HANDLES 32
 #define CTRDL_MAX_DEPS 16
+
+#define CTRDL_MAIN_HANDLE (CTRDLHandle*)(0x75107510)
 
 typedef void(*InitFiniFn)();
 
@@ -35,6 +37,7 @@ CTRDLHandle* ctrdl_createHandle(const char* path, size_t flags);
 void ctrdl_lockHandle(CTRDLHandle* handle);
 bool ctrdl_unlockHandle(CTRDLHandle* handle);
 
+size_t ctrdl_unsafeNumHandles(void);
 CTRDLHandle* ctrdl_unsafeGetHandleByIndex(size_t index);
 CTRDLHandle* ctrdl_unsafeFindHandleByName(const char* name);
 CTRDLHandle* ctrdl_unsafeFindHandleByAddr(u32 addr);

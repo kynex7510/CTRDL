@@ -5,7 +5,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-static CTRDLHandle g_Handles[CTRDL_MAX_HANDLES] = {};
+typedef struct {
+    CTRDLHandle** handles;
+    size_t size;
+    size_t capacity;
+} HandleList;
+
+static HandleList g_HandleList = {};
 static RecursiveLock g_Mtx;
 
 static void ctrdl_handleMtxLazyInit(void) {
@@ -31,9 +37,82 @@ void ctrdl_releaseHandleMtx(void) {
     RecursiveLock_Unlock(&g_Mtx);
 }
 
-CTRDLHandle* ctrdl_createHandle(const char* path, size_t flags) {
-    CTRDLHandle* handle = NULL;
+static CTRL_INLINE bool ctrdl_handleListIsFull(void) { return g_HandleList.size >= CTRDL_MAX_HANDLES; }
+static CTRL_INLINE bool ctrdl_handleListIsEmpty(void) { return g_HandleList.size == 0; }
 
+// Assumes the list is not full.
+static bool ctrdl_handleListInsert(CTRDLHandle* handle) {
+    // Initialize if not done already.
+    if (!g_HandleList.handles) {
+        g_HandleList.handles = malloc(sizeof(CTRDLHandle*));
+        if (!g_HandleList.handles)
+            return false;
+
+        g_HandleList.size = 0;
+        g_HandleList.capacity = 1;
+    }
+
+    // Increase capacity if required.
+    if (g_HandleList.size >= g_HandleList.capacity) {
+        size_t newCapacity = (g_HandleList.capacity * 2);
+        if (newCapacity > CTRDL_MAX_HANDLES)
+            newCapacity = CTRDL_MAX_HANDLES;
+
+        void* p = realloc(g_HandleList.handles, sizeof(CTRDLHandle*) * newCapacity);
+        if (!p)
+            return false;
+
+        g_HandleList.handles = p;
+        g_HandleList.capacity = newCapacity;
+    }
+
+    g_HandleList.handles[g_HandleList.size++] = handle;
+    return true;
+}
+
+static void ctrdl_handleListRemove(CTRDLHandle* handle) {
+    if (!g_HandleList.handles)
+        return;
+
+    // Find handle to remove.
+    size_t index = 0;
+    while (index < g_HandleList.size) {
+        if (g_HandleList.handles[index] == handle)
+            break;
+
+        ++index;
+    }
+
+    if (index >= g_HandleList.size)
+        return;
+
+    // Ensure the buffer remains contiguous.
+    while (index < (g_HandleList.size - 1)) {
+        g_HandleList.handles[index] = g_HandleList.handles[index + 1];
+        ++index;
+    }
+
+    --g_HandleList.size;
+
+    // Resize if possible.
+    if (g_HandleList.size <= (g_HandleList.capacity / 2)) {
+        if (!g_HandleList.size) {
+            free(g_HandleList.handles);
+            g_HandleList.handles = NULL;
+            g_HandleList.capacity = 0;
+            return;
+        }
+
+        const size_t newCapacity = g_HandleList.capacity / 2;
+        void* p = realloc(g_HandleList.handles, sizeof(CTRDLHandle*) * newCapacity);
+        if (p) {
+            g_HandleList.handles = p;
+            g_HandleList.capacity = newCapacity;
+        }
+    }
+}
+
+CTRDLHandle* ctrdl_createHandle(const char* path, size_t flags) {
     size_t pathSize = 0;
     char* pathCopy = NULL;
     if (path) {
@@ -47,27 +126,35 @@ CTRDLHandle* ctrdl_createHandle(const char* path, size_t flags) {
 
     ctrdl_acquireHandleMtx();
 
-    // Look for free handle.
-    for (size_t i = 0; i < CTRDL_MAX_HANDLES; ++i) {
-        CTRDLHandle* h = ctrdl_unsafeGetHandleByIndex(i);
-        if (!h->refc) {
-            handle = h;
-            break;
-        }
+    if (ctrdl_handleListIsFull()) {
+        ctrdl_setLastError(Err_HandleLimit);
+        ctrdl_releaseHandleMtx();
+        return NULL;
     }
 
-    // Initialize the handle if we have found one.
-    if (handle) {
-        if (pathCopy) {
-            memcpy(pathCopy, path, pathSize);
-            pathCopy[pathSize] = '\0';
-        }
+    // Create and initialize handle.
+    CTRDLHandle* handle = malloc(sizeof(CTRDLHandle));
+    if (!handle) {
+        ctrdl_releaseHandleMtx();
+        ctrdl_setLastError(Err_NoMemory);
+        free(pathCopy);
+        return NULL;
+    }
 
-        handle->path = pathCopy;
-        handle->flags = flags;
-        handle->refc = 1;
-    } else {
-        ctrdl_setLastError(Err_HandleLimit);
+    if (pathCopy) {
+        memcpy(pathCopy, path, pathSize);
+        pathCopy[pathSize] = '\0';
+    }
+
+    handle->path = pathCopy;
+    handle->flags = flags;
+    handle->refc = 1;
+
+    // Insert handle in list.
+    if (!ctrdl_handleListInsert(handle)) {
+        ctrdl_setLastError(Err_NoMemory);
+        free(handle);
+        free(pathCopy);
     }
 
     ctrdl_releaseHandleMtx();
@@ -75,7 +162,7 @@ CTRDLHandle* ctrdl_createHandle(const char* path, size_t flags) {
 }
 
 void ctrdl_lockHandle(CTRDLHandle* handle) {
-    if (handle) {
+    if (handle && (handle != CTRDL_MAIN_HANDLE)) {
         ctrdl_acquireHandleMtx();
         ++handle->refc;
         ctrdl_releaseHandleMtx();
@@ -85,7 +172,7 @@ void ctrdl_lockHandle(CTRDLHandle* handle) {
 bool ctrdl_unlockHandle(CTRDLHandle* handle) {
     bool ret = true;
 
-    if (handle) {
+    if (handle && (handle != CTRDL_MAIN_HANDLE)) {
         ctrdl_acquireHandleMtx();
 
         if (handle->refc)
@@ -94,8 +181,13 @@ bool ctrdl_unlockHandle(CTRDLHandle* handle) {
         if (!handle->refc) {
             ret = ctrdl_unloadObject(handle);
             if (ret) {
+                ctrdl_handleListRemove(handle);
                 free(handle->path);
-                memset(handle, 0, sizeof(*handle));
+                free(handle->symBuckets);
+                free(handle->symChains);
+                free(handle->symEntries);
+                free(handle->stringTable);
+                free(handle);
             }
         }
 
@@ -108,19 +200,21 @@ bool ctrdl_unlockHandle(CTRDLHandle* handle) {
     return ret;
 }
 
-CTRDLHandle* ctrdl_unsafeGetHandleByIndex(size_t index) {
-    if (index < CTRDL_MAX_HANDLES)
-        return &g_Handles[index];
+size_t ctrdl_unsafeNumHandles(void) { return g_HandleList.size; }
 
+CTRDLHandle* ctrdl_unsafeGetHandleByIndex(size_t index) {
+    if (index < g_HandleList.size)
+        return g_HandleList.handles[index];
+    
     return NULL;
 }
 
 CTRDLHandle* ctrdl_unsafeFindHandleByName(const char* name) {
     CTRDLHandle* found = NULL;
 
-    for (size_t i = 0; i < CTRDL_MAX_HANDLES; ++i) {
+    for (size_t i = 0; i < ctrdl_unsafeNumHandles(); ++i) {
         CTRDLHandle* h = ctrdl_unsafeGetHandleByIndex(i);
-        if (h->refc && h->path && strstr(h->path, name)) {
+        if (h->path && strstr(h->path, name)) {
             found = h;
             break;
         }
@@ -132,9 +226,9 @@ CTRDLHandle* ctrdl_unsafeFindHandleByName(const char* name) {
 CTRDLHandle* ctrdl_unsafeFindHandleByAddr(u32 addr) {
     CTRDLHandle* found = NULL;
 
-    for (size_t i = 0; i < CTRDL_MAX_HANDLES; ++i) {
+    for (size_t i = 0; i < ctrdl_unsafeNumHandles(); ++i) {
         CTRDLHandle* h = ctrdl_unsafeGetHandleByIndex(i);
-        if (h->refc && (addr >= h->base) && (addr <= (h->base + h->size))) {
+        if ((addr >= h->base) && (addr <= (h->base + h->size))) {
             found = h;
             break;
         }

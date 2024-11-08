@@ -9,7 +9,7 @@ typedef void (*DoMathFn)(int, int);
 
 static void stub() {}
 
-static void* resolver(const char* sym, void* unused) {
+void* ctrdlProgramResolver(const char* sym) {
     if (!strcmp(sym, "puts"))
         return puts;
         
@@ -23,13 +23,15 @@ static void enumerateCallback(void* handle) {
     CTRDLInfo info;
     printf("Handle value: 0x%08lx\n", (u32)handle);
     if (ctrdlInfo(handle, &info)) {
-        printf("- Path: %s\n", info.path ? info.path : "(UNKNOWN)");
+        printf("- Path: %s\n", info.path ? info.path : "(unknown)");
         printf("- Base address: 0x%08lx\n", info.base);
         printf("- Size: 0x%08x\n", info.size);
         ctrdlFreeInfo(&info);
     } else {
         printf("ctrdlInfo() failed: %s\n", dlerror());
     }
+
+    printf("---------------\n");
 }
 
 int main(int argc, char* argv[]) {
@@ -39,7 +41,7 @@ int main(int argc, char* argv[]) {
     srand(time(NULL));
 
     printf("Loading library...\n");
-    void* h = ctrdlOpen("sdmc:/Math.so", RTLD_NOW, resolver, NULL);
+    void* h = dlopen("sdmc:/Math.so", RTLD_NOW);
     if (!h)
         goto fail;
 
@@ -50,7 +52,7 @@ int main(int argc, char* argv[]) {
     if (!doMath)
         goto fail;
 
-    printf("Address of doMath(): 0x%08x\n", doMath);  
+    printf("- Address of doMath(): 0x%08x\n", doMath);  
     doMath(rand() % 14492, rand() % 9572);
 
     printf("Unloading library...\n");
