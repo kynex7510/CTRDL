@@ -61,7 +61,7 @@ static char* ctrdl_getDepPath(const char* basePath, const char* name) {
     return buffer;
 }
 
-static bool ctrdl_loadDeps(LdrData* ldrData) {
+static bool ctrdl_loadDeps(LdrData* ldrData, bool local) {
     const size_t depCount = ctrdl_getELFNumDynEntriesWithTag(&ldrData->elf, DT_NEEDED);
     if (depCount > CTRDL_MAX_DEPS) {
         ctrdl_setLastError(Err_DepsLimit);
@@ -77,7 +77,7 @@ static bool ctrdl_loadDeps(LdrData* ldrData) {
 
     for (size_t i = 0; i < depCount; ++i) {
         char* depPath = ctrdl_getDepPath(ldrData->handle->path, ldrData->elf.stringTable + depEntries[i].d_un.d_ptr);
-        void* depHandle = ctrdlOpen(depPath, RTLD_NOW | RTLD_LOCAL, ldrData->resolver, ldrData->resolverUserData);
+        void* depHandle = ctrdlOpen(depPath, RTLD_NOW | (local ? RTLD_LOCAL : RTLD_GLOBAL), ldrData->resolver, ldrData->resolverUserData);
         free(depPath);
 
         if (!depHandle) {
@@ -95,7 +95,7 @@ static bool ctrdl_mapObject(LdrData* ldrData) {
     CTRDLHandle* handle = ldrData->handle;
 
     // Load dependencies.
-    if (!ctrdl_loadDeps(ldrData)) {
+    if (!ctrdl_loadDeps(ldrData, ldrData->handle->flags & RTLD_LOCAL)) {
         // References may be resolved by the user.
         if (!ldrData->resolver) {
             ctrdl_unloadObject(handle);
