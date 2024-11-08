@@ -13,9 +13,9 @@ typedef struct {
     Elf32_Ehdr header;
     Elf32_Phdr* segments;
     Elf32_Dyn* dynEntries;
-    Elf32_Word numOfSymBuckets;
+    Elf32_Word numSymBuckets;
     Elf32_Word* symBuckets;
-    Elf32_Word numOfSymChains;
+    Elf32_Word numSymChains;
     Elf32_Word* symChains;
     Elf32_Sym* symEntries;
     char* stringTable;

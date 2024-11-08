@@ -19,7 +19,7 @@ typedef struct {
     size_t flags;               // Object flags.
     void* deps[CTRDL_MAX_DEPS]; // Object dependencies.
     InitFiniFn* finiArray;      // Fini array address.
-    size_t numOfFiniEntries;    // Number of fini functions.
+    size_t numFiniEntries;      // Number of fini functions.
     size_t numSymBuckets;       // Number of symbol buckets;
     Elf32_Word* symBuckets;     // Symbol buckets.
     size_t numSymChains;        // Number of symbol chains (entries).

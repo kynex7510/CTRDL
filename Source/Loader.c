@@ -245,8 +245,8 @@ static bool ctrdl_mapObject(LdrData* ldrData) {
 
     if (hasInitArr && hasInitSz) {
         const Elf32_Addr* initArray = (const Elf32_Addr*)(handle->base + initEntry.d_un.d_ptr);
-        const size_t numOfEntries = initEntrySize.d_un.d_val / sizeof(Elf32_Addr);
-        for (size_t i = 0; i < numOfEntries; ++i)
+        const size_t numEntries = initEntrySize.d_un.d_val / sizeof(Elf32_Addr);
+        for (size_t i = 0; i < numEntries; ++i)
             ((InitFiniFn)(initArray[i]))();
     }
 
@@ -259,12 +259,12 @@ static bool ctrdl_mapObject(LdrData* ldrData) {
 
     if (hasFiniArr && hasFiniSz) {
         handle->finiArray = (InitFiniFn*)(handle->base + finiEntry.d_un.d_ptr);
-        handle->numOfFiniEntries = finiEntrySize.d_un.d_val / sizeof(Elf32_Addr);
+        handle->numFiniEntries = finiEntrySize.d_un.d_val / sizeof(Elf32_Addr);
     }
 
-    handle->numSymBuckets = ldrData->elf.numOfSymBuckets;
+    handle->numSymBuckets = ldrData->elf.numSymBuckets;
     handle->symBuckets = ldrData->elf.symBuckets;
-    handle->numSymChains = ldrData->elf.numOfSymChains;
+    handle->numSymChains = ldrData->elf.numSymChains;
     handle->symChains = ldrData->elf.symChains;
     handle->symEntries = ldrData->elf.symEntries;
     handle->stringTable = ldrData->elf.stringTable;
@@ -300,8 +300,9 @@ CTRDLHandle* ctrdl_loadObject(const char* name, int flags, CTRDLStream* stream, 
 
 bool ctrdl_unloadObject(CTRDLHandle* handle) {
     // Run finalizers.
+    // TODO: reverse order??
     if (handle->finiArray) {
-        for (size_t i = 0; i < handle->numOfFiniEntries; ++i)
+        for (size_t i = 0; i < handle->numFiniEntries; ++i)
             handle->finiArray[i]();
     }
 

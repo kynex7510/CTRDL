@@ -121,39 +121,39 @@ bool ctrdl_parseELF(CTRDLStream* stream, CTRDLElf* out) {
         return false;
     }
 
-    if (!stream->read(stream, &out->numOfSymBuckets, sizeof(Elf32_Word))) {
+    if (!stream->read(stream, &out->numSymBuckets, sizeof(Elf32_Word))) {
         ctrdl_setLastError(Err_ReadFailed);
         ctrdl_freeELF(out);
         return false;
     }
 
-    if (!stream->read(stream, &out->numOfSymChains, sizeof(Elf32_Word))) {
+    if (!stream->read(stream, &out->numSymChains, sizeof(Elf32_Word))) {
         ctrdl_setLastError(Err_ReadFailed);
         ctrdl_freeELF(out);
         return false;
     }
 
-    out->symBuckets = malloc(out->numOfSymBuckets * sizeof(Elf32_Word));
+    out->symBuckets = malloc(out->numSymBuckets * sizeof(Elf32_Word));
     if (!out->symBuckets) {
         ctrdl_setLastError(Err_NoMemory);
         ctrdl_freeELF(out);
         return false;
     }
 
-    out->symChains = malloc(out->numOfSymChains * sizeof(Elf32_Word));
+    out->symChains = malloc(out->numSymChains * sizeof(Elf32_Word));
     if (!out->symChains) {
         ctrdl_setLastError(Err_NoMemory);
         ctrdl_freeELF(out);
         return false;
     }
 
-    if (!stream->read(stream, out->symBuckets, out->numOfSymBuckets * sizeof(Elf32_Word))) {
+    if (!stream->read(stream, out->symBuckets, out->numSymBuckets * sizeof(Elf32_Word))) {
         ctrdl_setLastError(Err_ReadFailed);
         ctrdl_freeELF(out);
         return false;
     }
 
-    if (!stream->read(stream, out->symChains, out->numOfSymChains * sizeof(Elf32_Word))) {
+    if (!stream->read(stream, out->symChains, out->numSymChains * sizeof(Elf32_Word))) {
         ctrdl_setLastError(Err_ReadFailed);
         ctrdl_freeELF(out);
         return false;
@@ -173,14 +173,14 @@ bool ctrdl_parseELF(CTRDLStream* stream, CTRDLElf* out) {
         return false;
     }
 
-    out->symEntries = malloc(out->numOfSymChains * sizeof(Elf32_Sym));
+    out->symEntries = malloc(out->numSymChains * sizeof(Elf32_Sym));
     if (!out->symEntries) {
         ctrdl_setLastError(Err_NoMemory);
         ctrdl_freeELF(out);
         return false;
     }
 
-    if (!stream->read(stream, out->symEntries, out->numOfSymChains * sizeof(Elf32_Sym))) {
+    if (!stream->read(stream, out->symEntries, out->numSymChains * sizeof(Elf32_Sym))) {
         ctrdl_setLastError(Err_ReadFailed);
         ctrdl_freeELF(out);
         return false;
