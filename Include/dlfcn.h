@@ -6,9 +6,12 @@
 #include <stdio.h>
 
 #define RTLD_LOCAL 0x0000
+#define RTLD_LAZY 0x0001     // Unsupported.
 #define RTLD_NOW 0x0002
 #define RTLD_NOLOAD 0x0004
+#define RTLD_DEEPBIND 0x0008 // Unsupported.
 #define RTLD_GLOBAL 0x0100
+#define RTLD_NODELETE 0x1000 // Unsupported.
 
 typedef void*(*CTRDLResolverFn)(const char* sym, void* userData);
 typedef void(*CTRDLEnumerateFn)(void* handle);

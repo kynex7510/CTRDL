@@ -7,10 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define RTLD_LAZY 0x0001
-#define RTLD_DEEPBIND 0x0008
-#define RTLD_NODELETE 0x1000
-
 static bool ctrdl_checkFlags(int flags) {
     // Unsupported flags.
     if (flags & (RTLD_LAZY | RTLD_DEEPBIND | RTLD_NODELETE))
@@ -35,7 +31,7 @@ void* dlsym(void* handle, const char* name) {
     }
 
     CTRDLHandle* h = (CTRDLHandle*)handle;
-    const Elf32_Sym* sym = ctrdl_extendedFindSymbolFromName(h, name);
+    const Elf32_Sym* sym = ctrdl_symNameLookupDepOrder(h, name);
     if (sym)
         return (void*)(h->base + sym->st_value);
 
@@ -53,7 +49,7 @@ int dladdr(const void* address, Dl_info* info) {
         info->dli_fname = h->path;
         info->dli_fbase = (void*)h->base;
 
-        const Elf32_Sym* sym = ctrdl_findSymbolFromValue(h, addr - h->base);
+        const Elf32_Sym* sym = ctrdl_symValueLookupSingle(h, addr - h->base);
         if (sym) {
             info->dli_sname = &h->stringTable[sym->st_name];
             info->dli_saddr = (void*)(h->base + sym->st_value);
@@ -83,7 +79,11 @@ void* ctrdlOpen(const char* path, int flags, CTRDLResolverFn resolver, void* res
 
     if (handle) {
         // Update flags.
-        handle->flags = flags;
+        // Once GLOBAL, forever GLOBAL.
+        if (handle->flags & RTLD_GLOBAL)
+            flags &= ~(RTLD_LOCAL);
+
+        handle->flags = (flags & ~(RTLD_NOLOAD));
         return (void*)handle;
     }
 

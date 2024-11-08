@@ -3,8 +3,9 @@
 
 #include "Handle.h"
 
-const Elf32_Sym* ctrdl_findSymbolFromName(CTRDLHandle* handle, const char* name);
-const Elf32_Sym* ctrdl_extendedFindSymbolFromName(CTRDLHandle* handle, const char* name);
-const Elf32_Sym* ctrdl_findSymbolFromValue(CTRDLHandle* handle, Elf32_Word value);
+const Elf32_Sym* ctrdl_symNameLookupSingle(CTRDLHandle* handle, const char* name);
+const Elf32_Sym* ctrdl_symNameLookupLoadOrder(CTRDLHandle* handle, const char* name);
+const Elf32_Sym* ctrdl_symNameLookupDepOrder(CTRDLHandle* handle, const char* name);
+const Elf32_Sym* ctrdl_symValueLookupSingle(CTRDLHandle* handle, Elf32_Word value);
 
 #endif /* _CTRDL_SYMBOL_H */

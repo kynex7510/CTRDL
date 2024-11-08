@@ -17,6 +17,7 @@ typedef struct {
   uint8_t type;
 } RelEntry;
 
+// Relocations are processed in load order.
 static u32 ctrdl_resolveSymbol(const RelContext* ctx, Elf32_Word index) {
     if (index == STN_UNDEF)
         return 0;
@@ -34,10 +35,11 @@ static u32 ctrdl_resolveSymbol(const RelContext* ctx, Elf32_Word index) {
     const Elf32_Sym* sym = NULL;
     ctrdl_acquireHandleMtx();
 
+    // TODO: handles are not ordered by load order.
     for (size_t i = 0; i < CTRDL_MAX_HANDLES; ++i) {
         CTRDLHandle* h = ctrdl_unsafeGetHandleByIndex(i);
         if (h->refc && (h->flags & RTLD_GLOBAL)) {
-            sym = ctrdl_findSymbolFromName(h, name);
+            sym = ctrdl_symNameLookupSingle(h, name);
             if (sym)
                 break;
         }
@@ -47,14 +49,7 @@ static u32 ctrdl_resolveSymbol(const RelContext* ctx, Elf32_Word index) {
 
     if (!sym) {
         // Look into dependencies.
-        for (size_t i = 0; i < CTRDL_MAX_DEPS; ++i) {
-            CTRDLHandle* dep = ctx->handle->deps[i];
-            if (dep && !(dep->flags & RTLD_GLOBAL)) {
-                sym = ctrdl_findSymbolFromName(dep, name);
-                if (sym)
-                    break;
-            }
-        }
+        sym = ctrdl_symNameLookupLoadOrder(ctx->handle, name);
     }
 
     return sym ? (ctx->handle->base + sym->st_value) : 0;
