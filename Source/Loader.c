@@ -91,6 +91,11 @@ static bool ctrdl_loadDeps(LdrData* ldrData, bool local) {
     return true;
 }
 
+static CTRL_INLINE void ctrdl_callInitFini(Elf32_Addr addr) {
+    if (addr != 0 && addr != -1)
+        ((void(*)(void))(addr))();
+}
+
 static bool ctrdl_mapObject(LdrData* ldrData) {
     CTRDLHandle* handle = ldrData->handle;
 
@@ -247,7 +252,7 @@ static bool ctrdl_mapObject(LdrData* ldrData) {
         const Elf32_Addr* initArray = (const Elf32_Addr*)(handle->base + initEntry.d_un.d_ptr);
         const size_t numEntries = initEntrySize.d_un.d_val / sizeof(Elf32_Addr);
         for (size_t i = 0; i < numEntries; ++i)
-            ((InitFiniFn)(initArray[i]))();
+            ctrdl_callInitFini(initArray[i]);
     }
 
     // Fill additional data.
@@ -258,7 +263,7 @@ static bool ctrdl_mapObject(LdrData* ldrData) {
     const bool hasFiniSz = ctrdl_getELFDynEntryWithTag(&ldrData->elf, DT_FINI_ARRAYSZ, &finiEntrySize);
 
     if (hasFiniArr && hasFiniSz) {
-        handle->finiArray = (InitFiniFn*)(handle->base + finiEntry.d_un.d_ptr);
+        handle->finiArray = (Elf32_Addr*)(handle->base + finiEntry.d_un.d_ptr);
         handle->numFiniEntries = finiEntrySize.d_un.d_val / sizeof(Elf32_Addr);
     }
 
@@ -300,10 +305,9 @@ CTRDLHandle* ctrdl_loadObject(const char* name, int flags, CTRDLStream* stream, 
 
 bool ctrdl_unloadObject(CTRDLHandle* handle) {
     // Run finalizers.
-    // TODO: reverse order??
     if (handle->finiArray) {
         for (size_t i = 0; i < handle->numFiniEntries; ++i)
-            handle->finiArray[i]();
+            ctrdl_callInitFini(handle->finiArray[handle->numFiniEntries - i - 1]);
     }
 
     // Unmap segments.

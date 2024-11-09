@@ -24,4 +24,7 @@ extern void interop(const char* msg) {
     printf("Program says: %s\n", msg);
 
     ctrdlFreeInfo(&info);
+
+    if (dlclose(handle))
+        printf("ERROR: %s.\n", dlerror());
 }

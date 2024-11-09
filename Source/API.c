@@ -25,8 +25,10 @@ void* dlopen(const char* path, int flags) { return ctrdlOpen(path, flags, NULL, 
 const char* dlerror(void) { return ctrdl_getErrorAsString(ctrdl_getLastError()); }
 
 int dlclose(void* handle) {
-    // TODO: the pseudo handle should be "freed"?
-    return !ctrdl_unlockHandle((CTRDLHandle*)handle);
+    if (handle != CTRDL_MAIN_HANDLE)
+        return !ctrdl_unlockHandle((CTRDLHandle*)handle);
+
+    return 0;
 }
 
 void* dlsym(void* handle, const char* name) {
@@ -145,7 +147,7 @@ void* ctrdlOpen(const char* path, int flags, CTRDLResolverFn resolver, void* res
 }
 
 void* ctrdlFOpen(FILE* f, int flags, CTRDLResolverFn resolver, void* resolverUserData) {
-    if (!f || !ctrdl_checkFlags(flags)) {
+    if (!f || !ctrdl_checkFlags(flags) || (flags & RTLD_NOLOAD)) {
         ctrdl_setLastError(Err_InvalidParam);
         return NULL;
     }
@@ -156,7 +158,7 @@ void* ctrdlFOpen(FILE* f, int flags, CTRDLResolverFn resolver, void* resolverUse
 }
 
 void* ctrdlMap(const void* buffer, size_t size, int flags, CTRDLResolverFn resolver, void* resolverUserData) {
-    if (!buffer || !size || !ctrdl_checkFlags(flags)) {
+    if (!buffer || !size || !ctrdl_checkFlags(flags) || (flags & RTLD_NOLOAD)) {
         ctrdl_setLastError(Err_InvalidParam);
         return NULL;
     }

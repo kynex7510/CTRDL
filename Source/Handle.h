@@ -10,8 +10,6 @@
 
 #define CTRDL_MAIN_HANDLE (CTRDLHandle*)(0x75107510)
 
-typedef void(*InitFiniFn)();
-
 typedef struct {
     char* path;                 // Object path.
     u32 base;                   // Mirror address of mapped region.
@@ -20,7 +18,7 @@ typedef struct {
     size_t refc;                // Object refcount.
     size_t flags;               // Object flags.
     void* deps[CTRDL_MAX_DEPS]; // Object dependencies.
-    InitFiniFn* finiArray;      // Fini array address.
+    Elf32_Addr* finiArray;      // Fini array address.
     size_t numFiniEntries;      // Number of fini functions.
     size_t numSymBuckets;       // Number of symbol buckets;
     Elf32_Word* symBuckets;     // Symbol buckets.
