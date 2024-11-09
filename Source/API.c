@@ -100,11 +100,13 @@ int dladdr(const void* address, Dl_info* info) {
 }
 
 void* ctrdlOpen(const char* path, int flags, CTRDLResolverFn resolver, void* resolverUserData) {
-    // We don't support the NULL pseudo handle.
-    if (!path || !ctrdl_checkFlags(flags)) {
+    if (!ctrdl_checkFlags(flags)) {
         ctrdl_setLastError(Err_InvalidParam);
         return NULL;
     }
+
+    if (!path)
+        return CTRDL_MAIN_HANDLE;
 
     // Avoid reading if already open.
     ctrdl_acquireHandleMtx();
@@ -130,7 +132,7 @@ void* ctrdlOpen(const char* path, int flags, CTRDLResolverFn resolver, void* res
     // Open file for reading.
     FILE* f = fopen(path, "rb");
     if (!f) {
-        ctrdl_setLastError(Err_InvalidParam);
+        ctrdl_setLastError(Err_NotFound);
         return NULL;
     }
 
