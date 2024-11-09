@@ -41,7 +41,7 @@ int main(int argc, char* argv[]) {
     srand(time(NULL));
 
     printf("Loading library...\n");
-    void* h = dlopen("sdmc:/Math.so", RTLD_NOW);
+    void* h = dlopen("sdmc:/libmath.so", RTLD_NOW);
     if (!h)
         goto fail;
 
