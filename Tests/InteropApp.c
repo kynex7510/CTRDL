@@ -19,7 +19,8 @@ void* ctrdlProgramResolver(const char* sym) {
     RESOLVER_ENTRY(ctrdlInfo);
     RESOLVER_ENTRY(printf);
     RESOLVER_ENTRY(ctrdlFreeInfo);
-    RESOLVER_ENTRY(consoleGetDefault);
+    RESOLVER_ENTRY(dlclose);
+    RESOLVER_ENTRY(dlerror);
     return stub;
 }
 
