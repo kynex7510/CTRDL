@@ -1,3 +1,5 @@
+#include "CTRL/App.h"
+
 #include "Handle.h"
 #include "Error.h"
 #include "Loader.h"
@@ -213,9 +215,12 @@ bool ctrdlInfo(void* handle, CTRDLInfo* info) {
     }
 
     if (handle == CTRDL_MAIN_HANDLE) {
-        // TODO (needs support from CTRL).
-        ctrdl_setLastError(Err_InvalidParam);
-        return false;
+        const CTRLAppSectionInfo* appSectionInfo = ctrlAppSectionInfo();
+        info->path = NULL;
+        info->pathSize = 0;
+        info->base = appSectionInfo->textAddr;
+        info->size = appSectionInfo->textSize + appSectionInfo->rodataSize + appSectionInfo->dataSize;
+        return true;
     }
 
     CTRDLHandle* h = (CTRDLHandle*)handle;
@@ -223,7 +228,7 @@ bool ctrdlInfo(void* handle, CTRDLInfo* info) {
 
     bool success = true;
     if (h->path) {
-        info->pathSize = strlen(h->path);;
+        info->pathSize = strlen(h->path);
         info->path = malloc(info->pathSize + 1);
         if (info->path) {
             memcpy(info->path, h->path, info->pathSize);
