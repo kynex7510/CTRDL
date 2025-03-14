@@ -81,9 +81,9 @@ void printError(std::optional<PrintFileInfo> fileInfo, std::string_view fmt, Arg
         }, fmt, std::forward<Args>(args)...);
 }
 
-inline void printTokenMark(std::string_view line, std::size_t column) {
+inline void printTokenMark(std::string_view line, std::size_t index) {
     fmt::println("\t{}", line);
-    fmt::print(fmt::fg(fmt::color::forest_green) | fmt::emphasis::bold, "\t{}^\n", std::string(column, ' '));
+    fmt::print(fmt::fg(fmt::color::forest_green) | fmt::emphasis::bold, "\t{}^\n", std::string(index, ' '));
 }
 
 } // namespace resgen
