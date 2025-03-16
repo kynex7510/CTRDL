@@ -1,7 +1,7 @@
 #ifndef _RESGEN_SYMTABLE_H
 #define _RESGEN_SYMTABLE_H
 
-#include "SymParse.h"
+#include "Symbol.h"
 
 #include <vector>
 #include <string>

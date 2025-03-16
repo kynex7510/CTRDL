@@ -7,17 +7,8 @@
 
 typedef void (*DoMathFn)(int, int);
 
-static void stub() {}
-
-void* ctrdlProgramResolver(const char* sym) {
-    if (!strcmp(sym, "puts"))
-        return puts;
-        
-    if (!strcmp(sym, "printf"))
-        return printf;
-        
-    return stub;
-}
+void __register_frame_info(const void*, struct object*) {}
+void *__deregister_frame_info(const void *) {}
 
 static void enumerateCallback(void* handle) {
     CTRDLInfo info;

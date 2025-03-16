@@ -2,7 +2,6 @@
 #define _RESGEN_RESGENERATOR_H
 
 #include "SymTable.h"
-#include "ToolCtx.h"
 
 #include <filesystem>
 
@@ -13,8 +12,8 @@ class ResGenerator {
     std::string m_ResolverName;
 
 public:
-    ResGenerator(const ToolCtx&, SymTable&&);
-    void writeToFile(const std::filesystem::path& path);
+    ResGenerator(SymTable&& symTable, std::string_view resolverName);
+    bool writeToFile(const std::filesystem::path& path);
 };
 
 } // namespace resgen

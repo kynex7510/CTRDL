@@ -1,29 +1,9 @@
 #include "CmdArgs.h"
-#include "ToolCtx.h"
-#include "SymTable.h"
+#include "Symbol.h"
 #include "ResGenerator.h"
 #include "Print.h"
 
 using namespace resgen;
-
-static void genResolver(const ToolCtx& toolCtx, const std::filesystem::path& path) {
-    SymList symList;
-
-    if (!resgen::parseSymList(path, symList))
-        return;
-
-    SymMap symMap;
-    for (const auto& sym : symList) {
-        if (toolCtx.isExcluded(sym))
-            continue;
-
-        symMap.insert({ sym, toolCtx.symbolDefinition(sym) });
-    }
-
-    auto outPath = path;
-    outPath.replace_extension(".s");
-    ResGenerator(toolCtx, std::move(SymTable(std::move(symMap)))).writeToFile(outPath);
-}
 
 int main(int argc, const char* const* argv) {
     // Parse arguments.
@@ -38,18 +18,39 @@ int main(int argc, const char* const* argv) {
     }
 
     if (args.inputs().empty()) {
-        resgen::printError({}, "at least one input list must be specified");
+        resgen::printError({}, "no input files");
         return 1;
     }
 
-    // Create context.
-    ToolCtx toolCtx;
-    if (!toolCtx.init(args))
-        return 1;
+    auto outPath = args.output();
+    if (outPath.empty())
+        outPath = "resolver.s";
 
-    // Generate resolvers.
-    for (const auto& input : args.inputs())
-        genResolver(toolCtx, input);
+    // Parse inputs.
+    SymList syms;
+    for (const auto& input : args.inputs()) {
+        if (!resgen::parseSymInput(input, syms))
+            return 1;
+    }
+
+    // Parse symdefs.
+    SymDefs defs;
+    for (const auto& defFile : args.definitionLists()) {
+        if (!defs.parse(defFile))
+            return 1;
+    }
+
+    // Generate symbol map.
+    SymMap symMap;
+
+    for (const auto& sym : syms) {
+        if (auto name = defs.resolve(sym))
+            symMap[sym] = *name;
+    }
+
+    // Generate resolver.
+    if (!ResGenerator(std::move(SymTable(std::move(symMap))), args.resolverName()).writeToFile(outPath))
+        return 1;
 
     return 0;
 }
