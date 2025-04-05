@@ -74,23 +74,25 @@ public:
 
     std::optional<std::string> resolve(std::string_view sym) const {
         // Find a rule for this symbol.
-        std::vector<std::string_view> patterns;
         const SymRule* matched = nullptr;
+        std::vector<const SymRule*> otherMatches;
         for (const auto& rule : m_Rules) {
             if (!rule.match(sym))
                 continue;
 
-            if (!matched)
+            if (!matched) {
                 matched = &rule;
-
-            patterns.push_back(rule.pattern());
+            } else {
+                otherMatches.push_back(&rule);
+            }
         }
 
-        if (patterns.size() > 1) {
+        if (!otherMatches.empty()) {
             resgen::printWarning({}, "multiple rules match symbol \"{}\"", sym);
+            resgen::printNote("chosen \"{}\"", matched->pattern());
 
-            for (const auto& pattern : patterns)
-                resgen::printNote("matches \"{}\"", pattern);
+            for (const auto& rule : otherMatches)
+                resgen::printNote("matches \"{}\"", rule->pattern());
         }
 
         // Return the same name if no rule matched.
