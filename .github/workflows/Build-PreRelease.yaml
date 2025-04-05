@@ -22,7 +22,7 @@ jobs:
           persist-credentials: false
 
       - name: Install Host Compiler
-        run: DEBIAN_FRONTEND=noninteractive apt update && DEBIAN_FRONTEND=noninteractive apt install -y gcc g++ build-essential
+        run: DEBIAN_FRONTEND=noninteractive apt update && DEBIAN_FRONTEND=noninteractive apt install -y gcc g++ build-essential libabsl-dev
 
       - name: Configure ResGen
         run: cmake -B ${{github.workspace}}/Build/ResGen -DCMAKE_BUILD_TYPE=Release ResGen
