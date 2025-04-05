@@ -37,7 +37,3 @@ Example:
     "gl.*" : { "exclude" : true }
 }
 ```
-
-```
-$DEVKITARM/bin/arm-none-eabi-readelf -W -s my.so | grep UND | awk '{ print $8 }' > out.symlist
-```

@@ -34,7 +34,7 @@ constexpr static char HASH_CODE[] =
 "    bx lr";
 
 constexpr static char RESOLVER_CODE[] =
-"    push {r4, r5}\n"
+"    push {r4, r5, lr}\n"
 "    mov r5, r0\n"
 "    bl fnv\n\n"
 "    ldr r1, =num_buckets\n"
@@ -59,8 +59,7 @@ constexpr static char RESOLVER_CODE[] =
 "    b _resolver_loop\n\n"
 "    _resolver_end:\n"
 "    ldr r0, [r4, #4]\n"
-"    pop {r4, r5}\n"
-"    bx lr";
+"    pop {r4, r5, pc}";
 
 ResGenerator::ResGenerator(SymTable&& symTable, std::string_view resolverName) : m_SymTable(std::move(symTable)) {
     m_ResolverName = resolverName;
