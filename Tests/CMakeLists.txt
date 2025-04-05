@@ -10,13 +10,13 @@ add_executable(dl-test-math MathApp.c)
 target_link_libraries(dl-test-math PRIVATE dl math-resolver)
 ctr_create_3dsx(dl-test-math)
 
-#add_executable(dl-test-interop InteropApp.c)
-#target_link_libraries(dl-test-interop PRIVATE dl libinterop-resolver)
-#ctr_create_3dsx(dl-test-interop)
+add_executable(dl-test-interop InteropApp.c)
+target_link_libraries(dl-test-interop PRIVATE dl interop-resolver)
+ctr_create_3dsx(dl-test-interop)
 
 install(
     FILES
     ${CMAKE_CURRENT_BINARY_DIR}/dl-test-math.3dsx
-#    ${CMAKE_CURRENT_BINARY_DIR}/dl-test-interop.3dsx
+    ${CMAKE_CURRENT_BINARY_DIR}/dl-test-interop.3dsx
     TYPE BIN
 )

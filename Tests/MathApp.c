@@ -7,6 +7,7 @@
 
 typedef void (*DoMathFn)(int, int);
 
+// TODO: remove.
 void __register_frame_info(const void*, struct object*) {}
 void *__deregister_frame_info(const void *) {}
 

@@ -10,19 +10,9 @@
 
 typedef void (*InteropFn)(const char*);
 
-static void stub() {}
-
-void* ctrdlProgramResolver(const char* sym) {
-    RESOLVER_ENTRY(consoleInit);
-    RESOLVER_ENTRY(consoleSelect);
-    RESOLVER_ENTRY(ctrdlThisHandle);
-    RESOLVER_ENTRY(ctrdlInfo);
-    RESOLVER_ENTRY(printf);
-    RESOLVER_ENTRY(ctrdlFreeInfo);
-    RESOLVER_ENTRY(dlclose);
-    RESOLVER_ENTRY(dlerror);
-    return stub;
-}
+// TODO: remove.
+void __register_frame_info(const void*, struct object*) {}
+void *__deregister_frame_info(const void *) {}
 
 int main(int argc, char* argv[]) {
     gfxInitDefault();
