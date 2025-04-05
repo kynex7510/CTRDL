@@ -66,13 +66,13 @@ bool ctrdl_parseELF(CTRDLStream* stream, CTRDLElf* out) {
         return false;
     }
 
-    out->segments = malloc(out->header.e_phoff * sizeof(Elf32_Phdr));
+    out->segments = malloc(out->header.e_phnum * sizeof(Elf32_Phdr));
     if (!out->segments) {
         ctrdl_setLastError(Err_NoMemory);
         return false;
     }
 
-    for (size_t i = 0; i < out->header.e_phoff; ++i) {
+    for (size_t i = 0; i < out->header.e_phnum; ++i) {
         if (!stream->read(stream, &out->segments[i], sizeof(Elf32_Phdr))) {
             ctrdl_setLastError(Err_ReadFailed);
             ctrdl_freeELF(out);
