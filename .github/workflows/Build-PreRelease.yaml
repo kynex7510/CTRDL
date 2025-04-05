@@ -21,13 +21,22 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Configure CMake
-        run: cmake -B ${{github.workspace}}/Build -G "Unix Makefiles" -DCMAKE_TOOLCHAIN_FILE="$DEVKITPRO/cmake/3DS.cmake" -DCMAKE_BUILD_TYPE=Release
+      - name: Configure ResGen
+        run: cmake -B ${{github.workspace}}/Build/ResGen -DCMAKE_BUILD_TYPE=Release ResGen
 
-      - name: Build
+      - name: Build ResGen
+        run: cmake --build ${{github.workspace}}/Build/ResGen --config Release
+
+      - name: Install ResGen
+        run: cmake --install ${{github.workspace}}/Build/ResGen --prefix ${{github.workspace}}/Build/ResGen/Release
+
+      - name: Configure CTRDL
+        run: cmake -B ${{github.workspace}}/Build -G "Unix Makefiles" -DCMAKE_TOOLCHAIN_FILE="$DEVKITPRO/cmake/3DS.cmake" -DCMAKE_BUILD_TYPE=Release -DRESGEN_PATH="${{github.workspace}}/Build/ResGen/Release/bin"
+
+      - name: Build CTRDL
         run: cmake --build ${{github.workspace}}/Build --config Release
 
-      - name: Install
+      - name: Install CTRDL
         run: cmake --install ${{github.workspace}}/Build --prefix ${{github.workspace}}/Build/Release
 
       - name: Make ZIP
