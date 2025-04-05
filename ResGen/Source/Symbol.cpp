@@ -134,9 +134,10 @@ static std::size_t checkSym(std::string_view s) {
     return std::string_view::npos;
 }
 
-extern bool parseBinaryImports(const std::filesystem::path& path, SymList& out);
+// Defined in Binary.cpp
+extern bool parseBinary(const std::filesystem::path& path, SymList& out);
 
-static bool parseSymList(const std::filesystem::path& path, SymList& out) {
+static bool parseList(const std::filesystem::path& path, SymList& out) {
     const auto fileName = path.filename().string();
     std::unordered_map<std::string, std::size_t> syms;
     std::string tmp;
@@ -199,7 +200,24 @@ static bool parseSymList(const std::filesystem::path& path, SymList& out) {
     return true;
 }
 
+static bool isExecutable(const std::filesystem::path& path) {
+    constexpr static const char* EXTENSIONS[] = {
+        ".elf",
+        ".so"
+    };
+
+    auto ext = path.extension().string();
+    for (auto& c : ext)
+        c = std::tolower(c);
+
+    for (auto i = 0; i < (sizeof(EXTENSIONS)/sizeof(EXTENSIONS[0])); ++i) {
+        if (ext == EXTENSIONS[i])
+            return true;
+    }
+
+    return false;
+}
+
 bool resgen::parseSymInput(const std::filesystem::path& path, SymList& out) {
-    // TODO: detect input.
-    return parseSymList(path, out);
+    return isExecutable(path) ? parseBinary(path, out) : parseList(path, out);
 }
