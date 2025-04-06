@@ -15,14 +15,19 @@ typedef struct {
   uintptr_t symbol;
   uint32_t addend;
   uint8_t type;
+  bool isWeak;
 } RelEntry;
 
 // Relocations are processed in load order.
-static u32 ctrdl_resolveSymbol(const RelContext* ctx, Elf32_Word index) {
-    if (index == STN_UNDEF)
+static u32 ctrdl_resolveSymbol(const RelContext* ctx, Elf32_Word index, bool* isWeak) {
+    if (index == STN_UNDEF) {
+        *isWeak = false;
         return 0;
+    }
 
-    const char* name = &ctx->elf->stringTable[ctx->elf->symEntries[index].st_name];
+    const Elf32_Sym* symEntry = &ctx->elf->symEntries[index];
+    const char* name = &ctx->elf->stringTable[symEntry->st_name];
+    *isWeak = ELF32_ST_BIND(symEntry->st_info) == STB_WEAK;
 
     // If we were given a resolver, use it first.
     if (ctx->resolver) {
@@ -62,7 +67,6 @@ static u32 ctrdl_resolveSymbol(const RelContext* ctx, Elf32_Word index) {
 
 static bool ctrdl_handleSingleReloc(RelContext* ctx, RelEntry* entry) {
     u32* dst = (u32*)entry->offset;
-
     switch (entry->type) {
         case R_ARM_RELATIVE:
             if (entry->addend) {
@@ -76,6 +80,8 @@ static bool ctrdl_handleSingleReloc(RelContext* ctx, RelEntry* entry) {
         case R_ARM_JUMP_SLOT:
             if (entry->symbol) {
                 *dst = entry->symbol + entry->addend;
+                return true;
+            } else if (entry->isWeak) {
                 return true;
             }
             break;
@@ -94,7 +100,7 @@ static bool ctrdl_handleRel(RelContext* ctx) {
             const Elf32_Rel* rel = &relArray[i];
 
             entry.offset = ctx->handle->base + rel->r_offset;
-            entry.symbol = ctrdl_resolveSymbol(ctx, ELF32_R_SYM(rel->r_info));
+            entry.symbol = ctrdl_resolveSymbol(ctx, ELF32_R_SYM(rel->r_info), &entry.isWeak);
             entry.addend = 0;
             entry.type = ELF32_R_TYPE(rel->r_info);
 
@@ -117,7 +123,7 @@ static bool ctrdl_handleRela(RelContext* ctx) {
             const Elf32_Rela* rela = &relaArray[i];
 
             entry.offset = ctx->handle->base + rela->r_offset;
-            entry.symbol = ctrdl_resolveSymbol(ctx, ELF32_R_SYM(rela->r_info));
+            entry.symbol = ctrdl_resolveSymbol(ctx, ELF32_R_SYM(rela->r_info), &entry.isWeak);
             entry.addend = rela->r_addend;
             entry.type = ELF32_R_TYPE(rela->r_info);
 
