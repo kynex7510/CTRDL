@@ -99,8 +99,13 @@ bool ResGenerator::writeToFile(const std::filesystem::path& path) {
 
     for (const auto& bucket : m_SymTable.buckets()) {
         for (const auto& entry : bucket) {
+            const auto& mapped = m_SymTable.mapped(entry);
+
+            if (mapped.isWeak)
+                f << ".weak " << mapped.name << '\n';
+
             f << ".word " << entry << '\n';
-            f << ".word " << m_SymTable.mapped(entry) << '\n';
+            f << ".word " << mapped.name << '\n';
         }
 
         f << ".word 0\n";

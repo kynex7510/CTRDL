@@ -192,12 +192,20 @@ static bool parse(const std::string& fileName, std::ifstream& f, SymList& out) {
     }
 
     // Read symbols.
+    const auto& isWeak = [](unsigned char info) {
+        if constexpr (std::is_same_v<HeaderType, Elf64_Ehdr>) {
+            return ELF64_ST_BIND(info) == STB_WEAK;
+        } else {
+            return ELF32_ST_BIND(info) == STB_WEAK;
+        }
+    };
+    
     for (auto& sym : symEntries) {
         if (sym.st_name == STN_UNDEF || sym.st_shndx != SHN_UNDEF)
             continue;
 
         const char* name = &stringTable[sym.st_name];
-        out.insert(name);
+        out.insert({name, isWeak(sym.st_info) });
     }
 
     return true;

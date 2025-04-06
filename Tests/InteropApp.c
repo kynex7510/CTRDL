@@ -10,10 +10,6 @@
 
 typedef void (*InteropFn)(const char*);
 
-// TODO: remove.
-void __register_frame_info(const void*, struct object*) {}
-void *__deregister_frame_info(const void *) {}
-
 int main(int argc, char* argv[]) {
     gfxInitDefault();
 

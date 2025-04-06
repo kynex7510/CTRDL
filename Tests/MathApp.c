@@ -7,10 +7,6 @@
 
 typedef void (*DoMathFn)(int, int);
 
-// TODO: remove.
-void __register_frame_info(const void*, struct object*) {}
-void *__deregister_frame_info(const void *) {}
-
 static void enumerateCallback(void* handle) {
     CTRDLInfo info;
     printf("Handle value: 0x%08lx\n", (u32)handle);

@@ -17,8 +17,19 @@
 
 namespace resgen {
 
-using SymList = std::unordered_set<std::string>;
-using SymMap = std::unordered_map<std::string, std::string>;
+struct SymEntry {
+    struct Hash {
+        std::size_t operator()(const SymEntry& other) const noexcept { return std::hash<std::string>{}(other.name); }
+    };
+
+    std::string name;
+    bool isWeak = false;
+
+    bool operator==(const SymEntry& other) const noexcept { return name == other.name; }
+};
+
+using SymList = std::unordered_set<SymEntry, SymEntry::Hash>;
+using SymMap = std::unordered_map<std::string, SymEntry>;
 
 class InvalidRuleException final : public std::runtime_error {
 public:
@@ -27,8 +38,9 @@ public:
 
 class SymRule final {
 public:
-    constexpr static std::size_t FLAG_EXCLUDE = 0x01;
-    constexpr static std::size_t FLAG_PARTIAL_MATCH = 0x02;
+    constexpr static std::size_t FLAG_WEAK = 0x01;
+    constexpr static std::size_t FLAG_EXCLUDE = 0x02;
+    constexpr static std::size_t FLAG_PARTIAL_MATCH = 0x04;
 
 private:
     std::unique_ptr<RE2> m_RE;
@@ -56,6 +68,8 @@ public:
 
         return std::string(sym);
     }
+
+    bool isWeak() const { return m_Flags & FLAG_WEAK; }
 };
 
 class SymDefs final {
@@ -65,15 +79,16 @@ class SymDefs final {
 public:
     SymDefs() {}
 
-    bool parse(const std::filesystem::path& path);
+    bool parseObject(std::string_view fileName, std::string_view content);
+    bool parseFile(const std::filesystem::path& path);
 
     void clear() {
         m_RuleNames.clear();
         m_Rules.clear();
     }
 
-    std::optional<std::string> resolve(std::string_view sym) const {
-        // Find a rule for this symbol.
+    // Find a rule for this symbol.
+    const SymRule* ruleForName(std::string_view sym) const {
         const SymRule* matched = nullptr;
         std::vector<const SymRule*> otherMatches;
         for (const auto& rule : m_Rules) {
@@ -95,8 +110,7 @@ public:
                 resgen::printNote("matches \"{}\"", rule->pattern());
         }
 
-        // Return the same name if no rule matched.
-        return matched ? matched->nameForSymbol(sym) : std::string(sym);
+        return matched;
     }
 };
 

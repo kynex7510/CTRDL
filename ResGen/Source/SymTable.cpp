@@ -34,7 +34,7 @@ static std::uint32_t nearestPowerOf2(std::uint32_t n) {
     return 0;
 }
 
-size_t SymTable::insertSymbol(const std::string& sym, const std::string& mapped) {
+size_t SymTable::insertSymbol(const std::string& sym, const SymEntry& mapped) {
     const auto strOff = m_StringTable.size();
     m_StringTable.resize(strOff + sym.size() + 1, '\0');
     memcpy(m_StringTable.data() + strOff, sym.data(), sym.size());

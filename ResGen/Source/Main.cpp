@@ -33,10 +33,10 @@ int main(int argc, const char* const* argv) {
             return 1;
     }
 
-    // Parse symdefs.
+    // Parse rules.
     SymDefs defs;
-    for (const auto& defFile : args.definitionLists()) {
-        if (!defs.parse(defFile))
+    for (const auto& ruleFile : args.rules()) {
+        if (!defs.parseFile(ruleFile))
             return 1;
     }
 
@@ -44,8 +44,17 @@ int main(int argc, const char* const* argv) {
     SymMap symMap;
 
     for (const auto& sym : syms) {
-        if (auto name = defs.resolve(sym))
-            symMap[sym] = *name;
+        const auto rule = defs.ruleForName(sym.name);
+
+        // Leave the original name if no rule matched.
+        if (!rule) {
+            symMap[sym.name] = sym;
+            continue;
+        } else {
+            // Apply the name given by the rule, if any.
+            if (auto name = rule->nameForSymbol(sym.name))
+                symMap[sym.name] = SymEntry { *name, rule->isWeak() };
+        }
     }
 
     // Generate resolver.

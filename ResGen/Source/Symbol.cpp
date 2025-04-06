@@ -14,22 +14,12 @@ bool SymRule::match(std::string_view s) const {
     return RE2::FullMatch(s, *m_RE);
 }
 
-bool SymDefs::parse(const std::filesystem::path& path) {
-    const auto fileName = path.filename().string();
+bool SymDefs::parseObject(std::string_view fileName, std::string_view content) {
     std::unordered_set<std::string> ruleNames;
     std::vector<SymRule> rules;
 
-    // Read json.
-    std::ifstream f(path);
-    if (!f.is_open()) {
-        resgen::printError(PrintFileInfo {
-            .fileName = fileName,
-            .boldText = true,
-        }, "could not open file");
-        return false;
-    }
-
-    const auto jsonData = nlohmann::json::parse(f, nullptr, false);
+    // Parse json.
+    const auto jsonData = nlohmann::json::parse(content, nullptr, false);
     if (!jsonData.is_object()) {
         resgen::printError( PrintFileInfo {
             .fileName = fileName,
@@ -79,6 +69,19 @@ bool SymDefs::parse(const std::filesystem::path& path) {
             name = value["name"].get<std::string>();
         }
 
+        if (value.contains("weak")) {
+            if (!value["weak"].is_boolean()) {
+                resgen::printError( PrintFileInfo {
+                    .fileName = fileName,
+                    .boldText = true,
+                }, "expected bool for \"weak\" of rule \"{}\"", rule);
+                return false;
+            }
+
+            if (value["weak"].get<bool>())
+                flags |= SymRule::FLAG_WEAK;
+        }
+
         if (value.contains("exclude")) {
             if (!value["exclude"].is_boolean()) {
                 resgen::printError( PrintFileInfo {
@@ -123,6 +126,22 @@ bool SymDefs::parse(const std::filesystem::path& path) {
     m_Rules.reserve(m_Rules.size() + rules.size());
     std::move(rules.begin(), rules.end(), std::back_inserter(m_Rules));
     return true;
+}
+
+bool SymDefs::parseFile(const std::filesystem::path& path) {
+    const auto fileName = path.filename().string();
+    
+    std::ifstream f(path);
+    if (!f.is_open()) {
+        resgen::printError(PrintFileInfo {
+            .fileName = fileName,
+            .boldText = true,
+        }, "could not open file");
+        return false;
+    }
+
+    const std::string content((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+    return parseObject(fileName, content);
 }
 
 static std::size_t checkSym(std::string_view s) {
@@ -170,7 +189,7 @@ static bool parseList(const std::filesystem::path& path, SymList& out) {
 
         // Check for duplicates.
         auto tmpIt = syms.find(tmp);
-        auto otherIt = out.find(tmp);
+        auto otherIt = out.find(SymEntry{ tmp, false });
 
         if ((tmpIt != syms.end()) || (otherIt != out.end())) {
             resgen::printWarning(PrintFileInfo {
@@ -193,7 +212,7 @@ static bool parseList(const std::filesystem::path& path, SymList& out) {
     auto it = syms.begin();
     while (it != syms.end()) {
         auto node = syms.extract(it);
-        out.insert(node.key());
+        out.insert({ node.key(), false });
         it = syms.begin();
     }
 
