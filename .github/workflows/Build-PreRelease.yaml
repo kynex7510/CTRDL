@@ -21,20 +21,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup Host Environment
-        run: DEBIAN_FRONTEND=noninteractive apt update && DEBIAN_FRONTEND=noninteractive apt upgrade -y && DEBIAN_FRONTEND=noninteractive apt install -y gcc g++ build-essential libabsl-dev
-
-      - name: Configure ResGen
-        run: cmake -B ${{github.workspace}}/Build/ResGen -DCMAKE_BUILD_TYPE=Release ResGen
-
-      - name: Build ResGen
-        run: cmake --build ${{github.workspace}}/Build/ResGen --config Release
-
-      - name: Install ResGen
-        run: cmake --install ${{github.workspace}}/Build/ResGen --prefix ${{github.workspace}}/Build/ResGen/Release
-
       - name: Configure CTRDL
-        run: cmake -B ${{github.workspace}}/Build -G "Unix Makefiles" -DCMAKE_TOOLCHAIN_FILE="$DEVKITPRO/cmake/3DS.cmake" -DCMAKE_BUILD_TYPE=Release -DRESGEN_PATH="${{github.workspace}}/Build/ResGen/Release/bin"
+        run: cmake -B ${{github.workspace}}/Build -G "Unix Makefiles" -DCMAKE_TOOLCHAIN_FILE="$DEVKITPRO/cmake/3DS.cmake" -DCMAKE_BUILD_TYPE=Release
 
       - name: Build CTRDL
         run: cmake --build ${{github.workspace}}/Build --config Release
