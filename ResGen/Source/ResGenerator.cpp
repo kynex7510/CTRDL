@@ -45,10 +45,10 @@ constexpr static char RESOLVER_CODE[] =
 "    add r0, r1\n"
 "    ldr r4, [r0]\n\n"
 "    _resolver_loop:\n"
-"    ldr r3, [r4, #4]\n"
-"    cmp r3, #0\n"
-"    beq _resolver_end\n"
 "    ldr r2, [r4]\n"
+"    cmp r2, #0xFFFFFFFF\n"
+"    beq _resolver_end\n"
+"    ldr r3, [r4, #4]\n"
 "    ldr r0, =names\n"
 "    add r0, r2\n"
 "    mov r1, r5\n"
@@ -108,7 +108,7 @@ bool ResGenerator::writeToFile(const std::filesystem::path& path) {
             f << ".word " << mapped.name << '\n';
         }
 
-        f << ".word 0\n";
+        f << ".word 0xFFFFFFFF\n";
         f << ".word 0\n";
     }
 
