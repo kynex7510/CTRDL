@@ -115,18 +115,21 @@ void* ctrdlOpen(const char* path, int flags, CTRDLResolverFn resolver, void* res
     // Avoid reading if already open.
     ctrdl_acquireHandleMtx();
     CTRDLHandle* handle = ctrdl_unsafeFindHandleByName(path);
-    ctrdl_lockHandle(handle);
-    ctrdl_releaseHandleMtx();
 
     if (handle) {
+        ctrdl_lockHandle(handle);
+
         // Update flags.
         // Once GLOBAL, forever GLOBAL.
         if (handle->flags & RTLD_GLOBAL)
             flags &= ~(RTLD_LOCAL);
 
         handle->flags = (flags & ~(RTLD_NOLOAD));
+        ctrdl_releaseHandleMtx();
         return (void*)handle;
     }
+
+    ctrdl_releaseHandleMtx();
 
     if (flags & RTLD_NOLOAD) {
         ctrdl_setLastError(Err_NotFound);
