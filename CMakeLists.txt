@@ -20,7 +20,6 @@ add_library(dl-shared INTERFACE)
 target_include_directories(dl-shared INTERFACE Include)
 
 if(RESGEN_PATH)
+    message("-- ResGen path set, tests enabled")
     add_subdirectory(Tests)
-else()
-    message(WARNING "ResGen path not set, tests will not be built.")
 endif()
