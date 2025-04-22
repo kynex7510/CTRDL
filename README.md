@@ -20,11 +20,11 @@ cmake --install Build --prefix Build/Release
 
 ## Symbol resolution
 
-Since all homebrew is statically linked by default, there's no way for a program to expose symbols to shared objects. This behaviour can be simulated by redeclaring `ctrdlProgramResolver`, which is called internally whenever a symbol has to be looked up in the program, or its dependencies. By default `ctrdlProgramResolver` returns `NULL`.
+Since all homebrew is statically linked by default, there's no way for a program to expose symbols to shared objects. This behaviour can be simulated by redeclaring `ctrdlProgramResolver`, which is called internally whenever a symbol has to be looked up in a program, or its dependencies. By default `ctrdlProgramResolver` returns `NULL` for any input.
 
 Additionally, a custom resolver can be passed to the extensions `ctrdlOpen`, `ctrdlFOpen`, `ctrdlMap`, which will be used at the relocation step, and which always precedes other lookup mechanisms (`dlsym` is not affected).
 
-Finally, the [ResGen](ResGen/README.md) tool can be used during build steps to automatically generate a resolver for specific libraries. See [Tests](Tests/Libs/CMakeLists.txt) for more info.
+Finally, the [ResGen](ResGen/README.md) tool can be used during build steps to automatically generate a resolver for specific libraries. See [README.md](ResGen/README.md) for more info and [Tests](Tests/Libs/CMakeLists.txt) for usage examples.
 
 ## Limitations
 

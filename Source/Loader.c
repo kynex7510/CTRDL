@@ -61,18 +61,26 @@ static char* ctrdl_getDepPath(const char* basePath, const char* name) {
     return buffer;
 }
 
-static bool ctrdl_loadDeps(LdrData* ldrData, bool local) {
+static bool ctrdl_loadDeps(LdrData* ldrData, bool local, bool hasResolver) {
     const size_t depCount = ctrdl_getELFNumDynEntriesWithTag(&ldrData->elf, DT_NEEDED);
     if (depCount > CTRDL_MAX_DEPS) {
-        ctrdl_setLastError(Err_DepsLimit);
-        return false;
+        if (!hasResolver) {
+            ctrdl_setLastError(Err_DepsLimit);
+            return false;
+        }
+
+        return true;
     }
 
     Elf32_Dyn depEntries[CTRDL_MAX_DEPS];
     const size_t actualDepCount = ctrdl_getELFDynEntriesWithTag(&ldrData->elf, DT_NEEDED, depEntries, CTRDL_MAX_DEPS);
     if (actualDepCount != depCount) {
-        ctrdl_setLastError(Err_DepFailed);
-        return false;
+        if (!hasResolver) {
+            ctrdl_setLastError(Err_DepFailed);
+            return false;
+        }
+
+        return true;
     }
 
     for (size_t i = 0; i < depCount; ++i) {
@@ -81,8 +89,12 @@ static bool ctrdl_loadDeps(LdrData* ldrData, bool local) {
         free(depPath);
 
         if (!depHandle) {
-            ctrdl_setLastError(Err_DepFailed);
-            return false;
+            if (!hasResolver) {
+                ctrdl_setLastError(Err_DepFailed);
+                return false;
+            }
+
+            return true;
         }
 
         ldrData->handle->deps[i] = depHandle;
@@ -99,13 +111,10 @@ static CTRL_INLINE void ctrdl_callInitFini(Elf32_Addr addr) {
 static bool ctrdl_mapObject(LdrData* ldrData) {
     CTRDLHandle* handle = ldrData->handle;
 
-    // Load dependencies.
-    if (!ctrdl_loadDeps(ldrData, ldrData->handle->flags & RTLD_LOCAL)) {
-        // References may be resolved by the user.
-        if (!ldrData->resolver) {
-            ctrdl_unloadObject(handle);
-            return false;
-        }
+    // Load dependencies (references may be resolved by the user).
+    if (!ctrdl_loadDeps(ldrData, ldrData->handle->flags & RTLD_LOCAL, ldrData->resolver)) {
+        ctrdl_unloadObject(handle);
+        return false;
     }
 
     // Calculate allocation space for load segments.
