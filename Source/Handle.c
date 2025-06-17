@@ -37,8 +37,8 @@ void ctrdl_releaseHandleMtx(void) {
     RecursiveLock_Unlock(&g_Mtx);
 }
 
-static CTRL_INLINE bool ctrdl_handleListIsFull(void) { return g_HandleList.size >= CTRDL_MAX_HANDLES; }
-static CTRL_INLINE bool ctrdl_handleListIsEmpty(void) { return g_HandleList.size == 0; }
+static inline bool ctrdl_handleListIsFull(void) { return g_HandleList.size >= CTRDL_MAX_HANDLES; }
+static inline bool ctrdl_handleListIsEmpty(void) { return g_HandleList.size == 0; }
 
 // Assumes the list is not full.
 static bool ctrdl_handleListInsert(CTRDLHandle* handle) {

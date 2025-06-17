@@ -1,4 +1,5 @@
-#include "CTRL/Memory.h"
+#include <CTRL/CodeAllocator.h>
+#include <CTRL/Memory.h>
 
 #include "Loader.h"
 #include "Handle.h"
@@ -8,8 +9,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define CODE_BASE 0x100000
-#define CODE_SIZE 0x3F00000
+#ifdef CTRDL_RESERVED_CODE_PAGES
+u32 __ctrl_code_allocator_pages = CTRDL_RESERVED_CODE_PAGES;
+#else
+u32 __ctrl_code_allocator_pages = 128; // Default to 512kb.
+#endif // CTRDL_RESERVED_CODE_PAGES
 
 typedef struct {
     CTRDLHandle* handle;
@@ -103,7 +107,7 @@ static bool ctrdl_loadDeps(LdrData* ldrData, bool local, bool hasResolver) {
     return true;
 }
 
-static CTRL_INLINE void ctrdl_callInitFini(Elf32_Addr addr) {
+static inline void ctrdl_callInitFini(Elf32_Addr addr) {
     if (addr != 0 && addr != -1)
         ((void(*)(void))(addr))();
 }
@@ -160,8 +164,8 @@ static bool ctrdl_mapObject(LdrData* ldrData) {
     handle->size = ctrlAlignSize(handle->size, CTRL_PAGE_SIZE);
     
     // Allocate and map segments.
-    handle->origin = (u32)aligned_alloc(CTRL_PAGE_SIZE, handle->size);
-    if (!handle->origin) {
+    const size_t numPages = ctrlAlignSize(handle->size, CTRL_PAGE_SIZE) >> 12;
+    if (R_FAILED(ctrlAllocCodePages(numPages, &handle->origin))) {
         ctrdl_setLastError(Err_NoMemory);
         ctrdl_unloadObject(handle);
         free(loadSegments);
@@ -186,32 +190,14 @@ static bool ctrdl_mapObject(LdrData* ldrData) {
         }
     }
 
-    size_t processedSize = 0;
-    MemInfo memInfo;
-    memInfo.base_addr = CODE_BASE;
-    while (true) {
-        if (R_FAILED(ctrlQueryRegion(memInfo.base_addr + processedSize, &memInfo))) {
-            ctrdl_setLastError(Err_MapFailed);
-            ctrdl_unloadObject(handle);
-            free(loadSegments);
-            return false;
-        }
+    if (R_FAILED(ctrlCommitCodePages(handle->origin, numPages, &handle->base))) {
+        ctrdl_setLastError(Err_MapFailed);
+        ctrdl_unloadObject(handle);
+        free(loadSegments);
+        return false;
+    }
 
-        if (memInfo.base_addr >= (CODE_BASE + CODE_SIZE)) {
-            ctrdl_setLastError(Err_NoMemory);
-            ctrdl_unloadObject(handle);
-            free(loadSegments);
-            return false;
-        }
-
-        if ((memInfo.state == MEMSTATE_FREE) && (memInfo.size >= handle->size))
-            break;
-
-        processedSize += memInfo.size;
-    };
-
-    handle->base = memInfo.base_addr;
-    if (R_FAILED(ctrlMirror(handle->base, handle->origin, handle->size))) {
+    if (R_FAILED(ctrlChangePerms(handle->base, numPages << 12, MEMPERM_READWRITE))) {
         ctrdl_setLastError(Err_MapFailed);
         ctrdl_unloadObject(handle);
         free(loadSegments);
@@ -241,13 +227,8 @@ static bool ctrdl_mapObject(LdrData* ldrData) {
         }
     }
 
-    if (R_FAILED(ctrlFlushCache(CTRL_ICACHE | CTRL_DCACHE))) {
-        ctrdl_setLastError(Err_MapFailed);
-        ctrdl_unloadObject(handle);
-        free(loadSegments);
-        return false;
-    }
-
+    ctrlFlushDataCache();
+    ctrlInvalidateInstructionCache();
     free(loadSegments);
 
     // Run initializers.
@@ -320,8 +301,10 @@ bool ctrdl_unloadObject(CTRDLHandle* handle) {
     }
 
     // Unmap segments.
-    if (handle->base) {
-        if (R_FAILED(ctrlUnmirror(handle->base, handle->origin, handle->size))) {
+    const size_t numPages = ctrlAlignSize(handle->size, CTRL_PAGE_SIZE) >> 12;
+
+    if (handle->base && handle->origin) {
+        if (R_FAILED(ctrlReleaseCodePages(handle->origin, handle->base, numPages))) {
             ctrdl_setLastError(Err_FreeFailed);
             return false;
         }
@@ -330,7 +313,11 @@ bool ctrdl_unloadObject(CTRDLHandle* handle) {
     }
 
     if (handle->origin) {
-        free((void*)handle->origin);
+        if (R_FAILED(ctrlFreeCodePages(handle->origin, numPages))) {
+            ctrdl_setLastError(Err_FreeFailed);
+            return false;
+        }
+
         handle->origin = 0;
         handle->size = 0;
     }

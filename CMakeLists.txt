@@ -5,9 +5,19 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 project(dl)
 
-CPMAddPackage("gh:kynex7510/CTRL#c8a24a0")
+CPMAddPackage("gh:kynex7510/CTRL#e0a85cd")
 
-file(GLOB DL_SOURCES Source/*.c)
+set(DL_SOURCES
+    Source/API.c
+    Source/ELFUtil.c
+    Source/Error.c
+    Source/Handle.c
+    Source/Loader.c
+    Source/Relocs.c
+    Source/Stream.c
+    Source/Symbol.c
+)
+
 add_library(dl STATIC ${DL_SOURCES})
 target_include_directories(dl PUBLIC Include)
 target_compile_options(dl PRIVATE -Wall -Wno-switch)
