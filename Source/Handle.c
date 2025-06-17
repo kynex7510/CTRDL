@@ -183,10 +183,6 @@ bool ctrdl_unlockHandle(CTRDLHandle* handle) {
             if (ret) {
                 ctrdl_handleListRemove(handle);
                 free(handle->path);
-                free(handle->symBuckets);
-                free(handle->symChains);
-                free(handle->symEntries);
-                free(handle->stringTable);
                 free(handle);
             }
         }
