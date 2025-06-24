@@ -132,7 +132,7 @@ CTRDLHandle* ctrdl_createHandle(const char* path, size_t flags) {
         return NULL;
     }
 
-    // Create and initialize handle.
+    // Create handle.
     CTRDLHandle* handle = malloc(sizeof(CTRDLHandle));
     if (!handle) {
         ctrdl_releaseHandleMtx();
@@ -141,21 +141,34 @@ CTRDLHandle* ctrdl_createHandle(const char* path, size_t flags) {
         return NULL;
     }
 
-    if (pathCopy) {
-        memcpy(pathCopy, path, pathSize);
-        pathCopy[pathSize] = '\0';
-    }
-
-    handle->path = pathCopy;
-    handle->flags = flags;
-    handle->refc = 1;
-
     // Insert handle in list.
     if (!ctrdl_handleListInsert(handle)) {
         ctrdl_setLastError(Err_NoMemory);
         free(handle);
         free(pathCopy);
     }
+
+    // Initialize handle values.
+    if (pathCopy) {
+        memcpy(pathCopy, path, pathSize);
+        pathCopy[pathSize] = '\0';
+    }
+
+    handle->path = pathCopy;
+    handle->base = 0;
+    handle->origin = 0;
+    handle->size = 0;
+    handle->refc = 1;
+    handle->flags = flags;
+    memset(handle->deps, 0, sizeof(void*) * CTRDL_MAX_DEPS);
+    handle->finiArray = NULL;
+    handle->numFiniEntries = 0;
+    handle->numSymBuckets = 0;
+    handle->symBuckets = NULL;
+    handle->numSymChains = 0;
+    handle->symChains = NULL;
+    handle->symEntries = NULL;
+    handle->stringTable = NULL;
 
     ctrdl_releaseHandleMtx();
     return handle;
@@ -183,10 +196,6 @@ bool ctrdl_unlockHandle(CTRDLHandle* handle) {
             if (ret) {
                 ctrdl_handleListRemove(handle);
                 free(handle->path);
-                free(handle->symBuckets);
-                free(handle->symChains);
-                free(handle->symEntries);
-                free(handle->stringTable);
                 free(handle);
             }
         }
