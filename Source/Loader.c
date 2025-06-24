@@ -197,7 +197,7 @@ static bool ctrdl_mapObject(LdrData* ldrData) {
         return false;
     }
 
-    if (R_FAILED(ctrlChangePerms(handle->base, numPages << 12, MEMPERM_READWRITE))) {
+    if (R_FAILED(ctrlChangeMemoryPerms(handle->base, numPages << 12, MEMPERM_READWRITE))) {
         ctrdl_setLastError(Err_MapFailed);
         ctrdl_unloadObject(handle);
         free(loadSegments);
@@ -219,7 +219,7 @@ static bool ctrdl_mapObject(LdrData* ldrData) {
         const size_t alignedSize = ctrlAlignSize(segment->p_memsz, segment->p_align);
         const MemPerm perms = ctrdl_wrapPerms(segment->p_flags);
 
-        if (R_FAILED(ctrlChangePerms(base, alignedSize, perms))) {
+        if (R_FAILED(ctrlChangeMemoryPerms(base, alignedSize, perms))) {
             ctrdl_setLastError(Err_MapFailed);
             ctrdl_unloadObject(handle);
             free(loadSegments);
