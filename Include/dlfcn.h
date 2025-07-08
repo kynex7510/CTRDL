@@ -32,7 +32,7 @@ typedef struct {
 
 #if defined(__cplusplus)
 extern "C" {
-#endif
+#endif // __cplusplus
 
 void* dlopen(const char* path, int flags);
 int dlclose(void* handle);
@@ -52,6 +52,6 @@ void ctrdlFreeInfo(CTRDLInfo* info);
 
 #if defined(__cplusplus)
 }
-#endif
+#endif // cplusplus
 
 #endif /* _CTRDL_DLFCN_H */

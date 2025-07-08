@@ -5,7 +5,7 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 project(dl)
 
-CPMAddPackage("gh:kynex7510/CTRL#c8a24a0")
+CPMAddPackage("gh:kynex7510/CTRL#50951b6")
 
 file(GLOB DL_SOURCES Source/*.c)
 add_library(dl STATIC ${DL_SOURCES})

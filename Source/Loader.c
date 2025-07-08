@@ -1,4 +1,4 @@
-#include "CTRL/Memory.h"
+#include <CTRL/Memory.h>
 
 #include "Loader.h"
 #include "Handle.h"
@@ -103,7 +103,7 @@ static bool ctrdl_loadDeps(LdrData* ldrData, bool local, bool hasResolver) {
     return true;
 }
 
-static CTRL_INLINE void ctrdl_callInitFini(Elf32_Addr addr) {
+static inline void ctrdl_callInitFini(Elf32_Addr addr) {
     if (addr != 0 && addr != -1)
         ((void(*)(void))(addr))();
 }

@@ -6,13 +6,13 @@ typedef struct {
     size_t index;
 } DepQueue;
 
-static CTRL_INLINE void ctrdl_depQueueInit(DepQueue* q) {
+static inline void ctrdl_depQueueInit(DepQueue* q) {
     q->size = 0;
     q->index = 0;
 }
 
-static CTRL_INLINE bool ctrdl_depQueueIsEmpty(DepQueue* q) { return q->size == 0; }
-static CTRL_INLINE bool ctrdl_depQueueIsFull(DepQueue* q) { return q->size >= CTRDL_MAX_HANDLES; }
+static inline bool ctrdl_depQueueIsEmpty(DepQueue* q) { return q->size == 0; }
+static inline bool ctrdl_depQueueIsFull(DepQueue* q) { return q->size >= CTRDL_MAX_HANDLES; }
 
 static void ctrdl_depQueuePush(DepQueue* q, CTRDLHandle* handle) {
     if (handle && !ctrdl_depQueueIsFull(q)) {
