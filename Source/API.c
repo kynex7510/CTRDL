@@ -1,4 +1,5 @@
 #include <CTRL/App.h>
+#include <CTRL/Memory.h>
 
 #include "Handle.h"
 #include "Error.h"
@@ -246,7 +247,7 @@ bool ctrdlInfo(void* handle, CTRDLInfo* info) {
     }
 
     info->base = h->base;
-    info->size = h->size;
+    info->size = ctrlNumPagesToSize(h->numPages);
 
     ctrdl_unlockHandle(h);
     return success;

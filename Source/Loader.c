@@ -121,7 +121,7 @@ static bool ctrdl_mapObject(LdrData* ldrData) {
         return false;
     }
 
-    // Calculate allocation space for load segments.
+    // Get segments.
     const size_t numSegments = ctrdl_getELFNumSegmentsByType(&ldrData->elf, PT_LOAD);
     if (!numSegments) {
         ctrdl_setLastError(Err_InvalidObject);
@@ -144,6 +144,10 @@ static bool ctrdl_mapObject(LdrData* ldrData) {
         return false;
     }
 
+    // Calculate allocation size, we assume segments are contiguous and non-overlapping.
+    u32 lowestAddr = -1;
+    size_t highestAddr = 0;
+
     for (size_t i = 0; i < numSegments; ++i) {
         const Elf32_Phdr* segment = &loadSegments[i];
 
@@ -154,18 +158,28 @@ static bool ctrdl_mapObject(LdrData* ldrData) {
             return false;
         }
 
-        if (segment->p_align > 1) {
-            handle->size += ctrlAlignSize(segment->p_memsz, segment->p_align);
-        } else {
-            handle->size += segment->p_memsz;
-        }
+        const u32 virtualBegin = ctrlAlignDown(segment->p_vaddr, CTRL_PAGE_SIZE);
+        if (virtualBegin < lowestAddr)
+            lowestAddr = virtualBegin;
+
+        const size_t endAlignment = segment->p_align > CTRL_PAGE_SIZE ? segment->p_align : CTRL_PAGE_SIZE;
+        const u32 virtualEnd = ctrlAlignUp(segment->p_vaddr + segment->p_memsz, endAlignment);
+
+        if (virtualEnd > highestAddr)
+            highestAddr = virtualEnd;
     }
 
-    handle->size = ctrlAlignSize(handle->size, CTRL_PAGE_SIZE);
+    if (highestAddr <= lowestAddr) {
+        ctrdl_setLastError(Err_InvalidObject);
+        ctrdl_unloadObject(handle);
+        free(loadSegments);
+        return false;
+    }
+
+    handle->numPages = ctrlSizeToNumPages(highestAddr - lowestAddr);
     
-    // Allocate and map segments.
-    const size_t numPages = ctrlAlignSize(handle->size, CTRL_PAGE_SIZE) >> 12;
-    if (R_FAILED(ctrlAllocCodePages(numPages, &handle->origin))) {
+    // Allocate memory and map segments.
+    if (R_FAILED(ctrlAllocCodePages(handle->numPages, &handle->origin))) {
         ctrdl_setLastError(Err_NoMemory);
         ctrdl_unloadObject(handle);
         free(loadSegments);
@@ -190,14 +204,14 @@ static bool ctrdl_mapObject(LdrData* ldrData) {
         }
     }
 
-    if (R_FAILED(ctrlCommitCodePages(handle->origin, numPages, &handle->base))) {
+    if (R_FAILED(ctrlCommitCodePages(handle->origin, handle->numPages, &handle->base))) {
         ctrdl_setLastError(Err_MapFailed);
         ctrdl_unloadObject(handle);
         free(loadSegments);
         return false;
     }
 
-    if (R_FAILED(ctrlChangeMemoryPerms(handle->base, numPages << 12, MEMPERM_READWRITE))) {
+    if (R_FAILED(ctrlChangeMemoryPerms(handle->base, ctrlNumPagesToSize(handle->numPages), MEMPERM_READWRITE))) {
         ctrdl_setLastError(Err_MapFailed);
         ctrdl_unloadObject(handle);
         free(loadSegments);
@@ -216,7 +230,11 @@ static bool ctrdl_mapObject(LdrData* ldrData) {
     for (size_t i = 0; i < numSegments; ++i) {
         const Elf32_Phdr* segment = &loadSegments[i];
         const u32 base = handle->base + segment->p_vaddr;
-        const size_t alignedSize = ctrlAlignSize(segment->p_memsz, segment->p_align);
+
+        size_t alignedSize = segment->p_memsz;
+        if (segment->p_align > 1)
+            alignedSize = ctrlAlignUp(alignedSize, segment->p_align);
+
         const MemPerm perms = ctrdl_wrapPerms(segment->p_flags);
 
         if (R_FAILED(ctrlChangeMemoryPerms(base, alignedSize, perms))) {
@@ -301,10 +319,8 @@ bool ctrdl_unloadObject(CTRDLHandle* handle) {
     }
 
     // Unmap segments.
-    const size_t numPages = ctrlAlignSize(handle->size, CTRL_PAGE_SIZE) >> 12;
-
     if (handle->base && handle->origin) {
-        if (R_FAILED(ctrlReleaseCodePages(handle->origin, handle->base, numPages))) {
+        if (R_FAILED(ctrlReleaseCodePages(handle->origin, handle->base, handle->numPages))) {
             ctrdl_setLastError(Err_FreeFailed);
             return false;
         }
@@ -313,13 +329,13 @@ bool ctrdl_unloadObject(CTRDLHandle* handle) {
     }
 
     if (handle->origin) {
-        if (R_FAILED(ctrlFreeCodePages(handle->origin, numPages))) {
+        if (R_FAILED(ctrlFreeCodePages(handle->origin, handle->numPages))) {
             ctrdl_setLastError(Err_FreeFailed);
             return false;
         }
 
         handle->origin = 0;
-        handle->size = 0;
+        handle->numPages = 0;
     }
 
     // Unload dependencies.
