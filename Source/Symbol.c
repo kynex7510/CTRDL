@@ -64,7 +64,7 @@ const Elf32_Sym* ctrdl_symNameLookupSingle(CTRDLHandle* handle, const char* name
     return found;
 }
 
-const Elf32_Sym* ctrdl_symNameLookupLoadOrder(CTRDLHandle* handle, const char* name) {
+const Elf32_Sym* ctrdl_symNameLookupLoadOrder(CTRDLHandle* handle, const char* name, u32* modBase) {
     const Elf32_Sym* found = NULL;
 
     if (handle) {
@@ -73,10 +73,12 @@ const Elf32_Sym* ctrdl_symNameLookupLoadOrder(CTRDLHandle* handle, const char* n
         found = ctrdl_symNameLookupSingle(handle, name);
         if (!found) {
             for (size_t i = 0; i < CTRDL_MAX_DEPS; ++i) {
-                found = ctrdl_symNameLookupLoadOrder(handle->deps[i], name);
+                found = ctrdl_symNameLookupLoadOrder(handle->deps[i], name, modBase);
                 if (found)
                     break;
             }
+        } else if (modBase) {
+            *modBase = handle->base;
         }
 
         ctrdl_unlockHandle(handle);

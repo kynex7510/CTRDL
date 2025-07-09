@@ -1,6 +1,8 @@
 #include "Relocs.h"
 #include "Symbol.h"
 
+#include <string.h> // strcmp
+
 typedef struct {
     CTRDLHandle* handle;
     CTRDLElf* elf;
@@ -23,6 +25,7 @@ static u32 ctrdl_resolveSymbol(const RelContext* ctx, Elf32_Word index, bool* is
         return 0;
     }
 
+    u32 symBase = 0;
     const Elf32_Sym* symEntry = &ctx->elf->symEntries[index];
     const char* name = &ctx->elf->stringTable[symEntry->st_name];
     *isWeak = ELF32_ST_BIND(symEntry->st_info) == STB_WEAK;
@@ -47,20 +50,40 @@ static u32 ctrdl_resolveSymbol(const RelContext* ctx, Elf32_Word index, bool* is
         CTRDLHandle* h = ctrdl_unsafeGetHandleByIndex(i);
         if (h->flags & RTLD_GLOBAL) {
             sym = ctrdl_symNameLookupSingle(h, name);
-            if (sym)
+            if (sym) {
+                symBase = h->base;
                 break;
+            }
         }
     }
 
     ctrdl_releaseHandleMtx();
 
     if (!sym) {
-        // Look into dependencies.
-        // TODO: sym info for current module is not setup; do we need to look into ourselves?
-        sym = ctrdl_symNameLookupLoadOrder(ctx->handle, name);
+        // Look into ourselves.
+        if (ctx->elf->numSymChains) {
+            const Elf32_Word hash = ctrdl_getELFSymNameHash(name);
+            size_t chainIndex = ctx->elf->symBuckets[hash % ctx->elf->numSymBuckets];
+
+            while (chainIndex != STN_UNDEF) {
+                const Elf32_Sym* candidate = &ctx->elf->symEntries[chainIndex];
+                if (!strcmp(&ctx->elf->stringTable[candidate->st_name], name)) {
+                    sym = candidate;
+                    symBase = ctx->handle->base;
+                    break;
+                }
+
+                chainIndex = ctx->elf->symChains[chainIndex];
+            }
+        }
     }
 
-    return sym ? (ctx->handle->base + sym->st_value) : 0;
+    if (!sym) {
+        // Look into dependencies.
+        sym = ctrdl_symNameLookupLoadOrder(ctx->handle, name, &symBase);
+    }
+
+    return sym ? (symBase + sym->st_value) : 0;
 }
 
 static bool ctrdl_handleSingleReloc(RelContext* ctx, RelEntry* entry) {

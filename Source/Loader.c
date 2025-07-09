@@ -12,7 +12,7 @@
 #ifdef CTRDL_RESERVED_CODE_PAGES
 u32 __ctrl_code_allocator_pages = CTRDL_RESERVED_CODE_PAGES;
 #else
-u32 __ctrl_code_allocator_pages = 128; // Default to 512kb.
+u32 __ctrl_code_allocator_pages = 256; // Default to 1MB.
 #endif // CTRDL_RESERVED_CODE_PAGES
 
 typedef struct {
