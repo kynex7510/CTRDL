@@ -73,7 +73,7 @@ static u32 ctrdl_resolveSymbol(const RelContext* ctx, Elf32_Word index, bool* is
 
             while (chainIndex != STN_UNDEF) {
                 const Elf32_Sym* candidate = &ctx->elf->symEntries[chainIndex];
-                if (!strcmp(&ctx->elf->stringTable[candidate->st_name], name)) {
+                if (candidate != symEntry && !strcmp(&ctx->elf->stringTable[candidate->st_name], name)) {
                     sym = candidate;
                     symBase = ctx->handle->base;
                     break;
