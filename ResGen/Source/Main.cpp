@@ -44,7 +44,7 @@ int main(int argc, const char* const* argv) {
     SymMap symMap;
 
     for (const auto& sym : syms) {
-        const auto rule = defs.ruleForName(sym.name);
+        const auto rule = defs.ruleForSymName(sym.name);
 
         // Leave the original name if no rule matched.
         if (!rule) {

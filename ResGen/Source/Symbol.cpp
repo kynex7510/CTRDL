@@ -15,7 +15,7 @@ bool SymRule::match(std::string_view s) const {
 }
 
 bool SymDefs::parseObject(std::string_view fileName, std::string_view content) {
-    std::unordered_set<std::string> ruleNames;
+    std::unordered_set<std::string> rulePatterns;
     std::vector<SymRule> rules;
 
     // Parse json.
@@ -30,14 +30,14 @@ bool SymDefs::parseObject(std::string_view fileName, std::string_view content) {
 
     for (const auto& def : jsonData.items()) {
         // Ignore rule if already existing.
-        const auto& rule = def.key();
-        if (ruleNames.contains(rule) || m_RuleNames.contains(rule)) {
+        const auto& pattern = def.key();
+        if (rulePatterns.contains(pattern) || m_RulePatterns.contains(pattern)) {
             resgen::printWarning(PrintFileInfo {
                 .fileName = fileName,
                 .boldText = true,
-            }, "duplicate rule \"{}\", ignored", rule);
+            }, "duplicate rule \"{}\", ignored", pattern);
 
-            if (m_RuleNames.contains(rule))
+            if (m_RulePatterns.contains(pattern))
                 resgen::printNote("declared in a different file");
 
             continue;
@@ -49,7 +49,7 @@ bool SymDefs::parseObject(std::string_view fileName, std::string_view content) {
             resgen::printError( PrintFileInfo {
                 .fileName = fileName,
                 .boldText = true,
-            }, "expected object for rule \"{}\"", rule);
+            }, "expected object for rule \"{}\"", pattern);
             return false;
         }
 
@@ -62,7 +62,7 @@ bool SymDefs::parseObject(std::string_view fileName, std::string_view content) {
                 resgen::printError( PrintFileInfo {
                     .fileName = fileName,
                     .boldText = true,
-                }, "expected string for \"name\" of rule \"{}\"", rule);
+                }, "expected string for \"name\" of rule \"{}\"", pattern);
                 return false;
             }
 
@@ -74,7 +74,7 @@ bool SymDefs::parseObject(std::string_view fileName, std::string_view content) {
                 resgen::printError( PrintFileInfo {
                     .fileName = fileName,
                     .boldText = true,
-                }, "expected bool for \"weak\" of rule \"{}\"", rule);
+                }, "expected bool for \"weak\" of rule \"{}\"", pattern);
                 return false;
             }
 
@@ -87,7 +87,7 @@ bool SymDefs::parseObject(std::string_view fileName, std::string_view content) {
                 resgen::printError( PrintFileInfo {
                     .fileName = fileName,
                     .boldText = true,
-                }, "expected bool for \"exclude\" of rule \"{}\"", rule);
+                }, "expected bool for \"exclude\" of rule \"{}\"", pattern);
                 return false;
             }
 
@@ -100,7 +100,7 @@ bool SymDefs::parseObject(std::string_view fileName, std::string_view content) {
                 resgen::printError( PrintFileInfo {
                     .fileName = fileName,
                     .boldText = true,
-                }, "expected bool for \"partial_match\" of rule \"{}\"", rule);
+                }, "expected bool for \"partial_match\" of rule \"{}\"", pattern);
                 return false;
             }
 
@@ -110,8 +110,8 @@ bool SymDefs::parseObject(std::string_view fileName, std::string_view content) {
 
         // Add rule.
         try {
-            rules.emplace_back(SymRule(rule, std::move(name), flags));
-            ruleNames.insert(rule);
+            rules.emplace_back(SymRule(pattern, std::move(name), flags));
+            rulePatterns.insert(pattern);
         } catch (const InvalidRuleException& ex) {
             resgen::printError(PrintFileInfo {
                 .fileName = fileName,
@@ -121,7 +121,7 @@ bool SymDefs::parseObject(std::string_view fileName, std::string_view content) {
         }
     }
 
-    m_RuleNames.merge(std::move(ruleNames));
+    m_RulePatterns.merge(std::move(rulePatterns));
 
     m_Rules.reserve(m_Rules.size() + rules.size());
     std::move(rules.begin(), rules.end(), std::back_inserter(m_Rules));

@@ -33,7 +33,7 @@ using SymMap = std::unordered_map<std::string, SymEntry>;
 
 class InvalidRuleException final : public std::runtime_error {
 public:
-    InvalidRuleException(std::string_view rule) : std::runtime_error("invalid rule \"" + std::string(rule) + "\"") {}
+    InvalidRuleException(const std::string& pattern) : std::runtime_error("invalid rule \"" + pattern + "\"") {}
 };
 
 class SymRule final {
@@ -73,7 +73,7 @@ public:
 };
 
 class SymDefs final {
-    std::unordered_set<std::string> m_RuleNames;
+    std::unordered_set<std::string> m_RulePatterns;
     std::vector<SymRule> m_Rules;
 
 public:
@@ -83,12 +83,12 @@ public:
     bool parseFile(const std::filesystem::path& path);
 
     void clear() {
-        m_RuleNames.clear();
+        m_RulePatterns.clear();
         m_Rules.clear();
     }
 
     // Find a rule for this symbol.
-    const SymRule* ruleForName(std::string_view sym) const {
+    const SymRule* ruleForSymName(std::string_view sym) const {
         const SymRule* matched = nullptr;
         std::vector<const SymRule*> otherMatches;
         for (const auto& rule : m_Rules) {
