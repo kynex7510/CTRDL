@@ -1,7 +1,7 @@
 #ifndef _RESGEN_SYMBOL_H
 #define _RESGEN_SYMBOL_H
 
-#include <re2/re2.h>
+#include <boost/regex.hpp>
 
 #include "Print.h"
 
@@ -43,20 +43,23 @@ public:
     constexpr static std::size_t FLAG_PARTIAL_MATCH = 0x04;
 
 private:
-    std::unique_ptr<RE2> m_RE;
+    boost::regex m_Pattern;
     std::optional<std::string> m_Name;
     std::size_t m_Flags;
 
 public:
-    SymRule(std::string_view rule, std::optional<std::string>&& name, std::size_t flags = 0u) : m_RE(std::make_unique<RE2>(rule)), m_Name(std::move(name)), m_Flags(flags) {
-        if (!m_RE->ok())
-            throw InvalidRuleException(rule);
+    SymRule(const std::string& pattern, std::optional<std::string>&& name, std::size_t flags = 0u) : m_Name(std::move(name)), m_Flags(flags) {
+        try {
+            m_Pattern = pattern;
+        } catch (const boost::regex_error&) {
+            throw InvalidRuleException(pattern);
+        }
     }
 
     SymRule(SymRule&&) noexcept = default;
     SymRule& operator=(SymRule&&) noexcept = default;
 
-    std::string_view pattern() const { return m_RE->pattern(); }
+    std::string_view pattern() const { return m_Pattern.str(); }
     bool match(std::string_view s) const;
 
     std::optional<std::string> nameForSymbol(std::string_view sym) const {

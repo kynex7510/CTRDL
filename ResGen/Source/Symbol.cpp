@@ -8,10 +8,11 @@
 using namespace resgen;
 
 bool SymRule::match(std::string_view s) const {
-    if (m_Flags & FLAG_PARTIAL_MATCH)
-        return RE2::PartialMatch(s, *m_RE);
+    const auto flag = m_Flags & FLAG_PARTIAL_MATCH
+        ? boost::regex_constants::match_flag_type::match_partial
+        : boost::regex_constants::match_flag_type::match_all;
 
-    return RE2::FullMatch(s, *m_RE);
+    return boost::regex_match(std::string(s), m_Pattern, flag);
 }
 
 bool SymDefs::parseObject(std::string_view fileName, std::string_view content) {
