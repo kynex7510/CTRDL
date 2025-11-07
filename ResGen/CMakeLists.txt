@@ -5,15 +5,15 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 project(ResGen)
 
-CPMAddPackage("gh:fmtlib/fmt#11.1.4")
-CPMAddPackage("gh:jarro2783/cxxopts#v3.2.0")
+CPMAddPackage("gh:fmtlib/fmt#12.1.0")
+CPMAddPackage("gh:jarro2783/cxxopts#v3.3.1")
 
 CPMAddPackage(
-    URI "gh:boostorg/regex#boost-1.88.0"
+    URI "gh:boostorg/regex#boost-1.89.0"
     OPTIONS "BOOST_REGEX_STANDALONE ON"
 )
 
-CPMAddPackage("gh:nlohmann/json#v3.11.3")
+CPMAddPackage("gh:nlohmann/json#v3.12.0")
 
 file(GLOB RESGEN_SOURCES Source/*.cpp)
 add_executable(ResGen ${RESGEN_SOURCES})
