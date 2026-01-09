@@ -34,7 +34,8 @@ static u32 ctrdl_resolveSymbol(const RelContext* ctx, Elf32_Word index, bool* is
     u32 symBase = 0;
     const Elf32_Sym* symEntry = &ctx->elf->symEntries[index];
     const char* name = &ctx->elf->stringTable[symEntry->st_name];
-    *isWeak = ELF32_ST_BIND(symEntry->st_info) == STB_WEAK;
+    const bool weak = ELF32_ST_BIND(symEntry->st_info) == STB_WEAK;
+    *isWeak = weak;
 
     // If we were given a resolver, use it first.
     if (ctx->resolver) {
@@ -73,7 +74,9 @@ static u32 ctrdl_resolveSymbol(const RelContext* ctx, Elf32_Word index, bool* is
 
             while (chainIndex != STN_UNDEF) {
                 const Elf32_Sym* candidate = &ctx->elf->symEntries[chainIndex];
-                if (candidate != symEntry && !strcmp(&ctx->elf->stringTable[candidate->st_name], name)) {
+                const bool skipSelf = candidate == symEntry && weak;
+
+                if (!skipSelf && !strcmp(&ctx->elf->stringTable[candidate->st_name], name)) {
                     sym = candidate;
                     symBase = ctx->handle->base;
                     break;
