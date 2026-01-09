@@ -4,10 +4,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#define RESOLVER_ENTRY(name) \
-    if (!strcmp(sym, #name)) \
-        return name;
-
 typedef void (*InteropFn)(const char*);
 
 int main(int argc, char* argv[]) {
