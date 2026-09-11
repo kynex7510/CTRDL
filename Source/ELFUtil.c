@@ -32,55 +32,55 @@ bool ctrdl_parseELF(CTRDLStream* stream, CTRDLElf* out) {
 
     // Read header.
     if (!stream->seek(stream, 0)) {
-        ctrdl_setLastError(Err_ReadFailed);
+        ctrdl_setLastError("Header read failed");
         return false;
     }
 
     if (!stream->read(stream, &out->header, sizeof(Elf32_Ehdr))) {
-        ctrdl_setLastError(Err_ReadFailed);
+        ctrdl_setLastError("Header read failed");
         return false;
     }
 
     if (memcmp(out->header.e_ident, ELFMAG, SELFMAG)) {
-        ctrdl_setLastError(Err_InvalidObject);
+        ctrdl_setLastError("Invalid magic");
         return false;
     }
 
     if (out->header.e_ident[EI_CLASS] != ELFCLASS32) {
-        ctrdl_setLastError(Err_InvalidBit);
+        ctrdl_setLastError("Invalid class");
         return false;
     }
 
     if (out->header.e_ident[EI_DATA] != ELFDATA2LSB) {
-        ctrdl_setLastError(Err_InvalidObject);
+        ctrdl_setLastError("Invalid endianness");
         return false;
     }
 
     if (out->header.e_type != ET_DYN) {
-        ctrdl_setLastError(Err_NotSO);
+        ctrdl_setLastError("Not a shared object");
         return false;
     }
 
     if (out->header.e_machine != EM_ARM) {
-        ctrdl_setLastError(Err_InvalidArch);
+        ctrdl_setLastError("Invalid arch");
         return false;
     }
 
     // Read program headers.
     if (!stream->seek(stream, out->header.e_phoff)) {
-        ctrdl_setLastError(Err_ReadFailed);
+        ctrdl_setLastError("Program headers read failed");
         return false;
     }
 
     out->segments = malloc(out->header.e_phnum * sizeof(Elf32_Phdr));
     if (!out->segments) {
-        ctrdl_setLastError(Err_NoMemory);
+        ctrdl_setLastError("Program headers allocation failed");
         return false;
     }
 
     for (size_t i = 0; i < out->header.e_phnum; ++i) {
         if (!stream->read(stream, &out->segments[i], sizeof(Elf32_Phdr))) {
-            ctrdl_setLastError(Err_ReadFailed);
+            ctrdl_setLastError("Program header read failed");
             ctrdl_freeELF(out);
             return false;
         }
@@ -89,26 +89,26 @@ bool ctrdl_parseELF(CTRDLStream* stream, CTRDLElf* out) {
     // Read dyn entries.
     Elf32_Phdr dyn;
     if (!ctrdl_getELFSegmentByType(out, PT_DYNAMIC, &dyn)) {
-        ctrdl_setLastError(Err_InvalidObject);
+        ctrdl_setLastError("Missing dynamic segment");
         ctrdl_freeELF(out);
         return false;
     }
 
     if (!stream->seek(stream, dyn.p_offset)) {
-        ctrdl_setLastError(Err_InvalidObject);
+        ctrdl_setLastError("Dynamic segment read failed");
         ctrdl_freeELF(out);
         return false;
     }
 
     out->dynEntries = malloc(dyn.p_filesz);
     if (!out->dynEntries) {
-        ctrdl_setLastError(Err_NoMemory);
+        ctrdl_setLastError("Dynamic entries allocation failed");
         ctrdl_freeELF(out);
         return false;
     }
 
     if (!stream->read(stream, out->dynEntries, dyn.p_filesz)) {
-        ctrdl_setLastError(Err_InvalidObject);
+        ctrdl_setLastError("Dynamic entries read failed");
         ctrdl_freeELF(out);
         return false;
     }
@@ -116,51 +116,51 @@ bool ctrdl_parseELF(CTRDLStream* stream, CTRDLElf* out) {
     // Read sym hash table.
     Elf32_Dyn hash;
     if (!ctrdl_getELFDynEntryWithTag(out, DT_HASH, &hash)) {
-        ctrdl_setLastError(Err_InvalidObject);
+        ctrdl_setLastError("Hash table missing");
         ctrdl_freeELF(out);
         return false;
     }
 
     if (!stream->seek(stream, hash.d_un.d_ptr)) {
-        ctrdl_setLastError(Err_ReadFailed);
+        ctrdl_setLastError("Hash table dynamic entry read failed");
         ctrdl_freeELF(out);
         return false;
     }
 
     if (!stream->read(stream, &out->numSymBuckets, sizeof(Elf32_Word))) {
-        ctrdl_setLastError(Err_ReadFailed);
+        ctrdl_setLastError("Hash table num sym buckets read failed");
         ctrdl_freeELF(out);
         return false;
     }
 
     if (!stream->read(stream, &out->numSymChains, sizeof(Elf32_Word))) {
-        ctrdl_setLastError(Err_ReadFailed);
+        ctrdl_setLastError("Hash table num sym chains read failed");
         ctrdl_freeELF(out);
         return false;
     }
 
     out->symBuckets = malloc(out->numSymBuckets * sizeof(Elf32_Word));
     if (!out->symBuckets) {
-        ctrdl_setLastError(Err_NoMemory);
+        ctrdl_setLastError("Sym buckets allocation failed");
         ctrdl_freeELF(out);
         return false;
     }
 
     out->symChains = malloc(out->numSymChains * sizeof(Elf32_Word));
     if (!out->symChains) {
-        ctrdl_setLastError(Err_NoMemory);
+        ctrdl_setLastError("Sym chains allocation failed");
         ctrdl_freeELF(out);
         return false;
     }
 
     if (!stream->read(stream, out->symBuckets, out->numSymBuckets * sizeof(Elf32_Word))) {
-        ctrdl_setLastError(Err_ReadFailed);
+        ctrdl_setLastError("Sym buckets read failed");
         ctrdl_freeELF(out);
         return false;
     }
 
     if (!stream->read(stream, out->symChains, out->numSymChains * sizeof(Elf32_Word))) {
-        ctrdl_setLastError(Err_ReadFailed);
+        ctrdl_setLastError("Sym chains read failed");
         ctrdl_freeELF(out);
         return false;
     }
@@ -168,26 +168,26 @@ bool ctrdl_parseELF(CTRDLStream* stream, CTRDLElf* out) {
     // Read sym entries.
     Elf32_Dyn symtab;
     if (!ctrdl_getELFDynEntryWithTag(out, DT_SYMTAB, &symtab)) {
-        ctrdl_setLastError(Err_InvalidObject);
+        ctrdl_setLastError("Sym entries missing");
         ctrdl_freeELF(out);
         return false;
     }
 
     if (!stream->seek(stream, symtab.d_un.d_ptr)) {
-        ctrdl_setLastError(Err_ReadFailed);
+        ctrdl_setLastError("Sym entries dynamic entry read failed");
         ctrdl_freeELF(out);
         return false;
     }
 
     out->symEntries = malloc(out->numSymChains * sizeof(Elf32_Sym));
     if (!out->symEntries) {
-        ctrdl_setLastError(Err_NoMemory);
+        ctrdl_setLastError("Sym entries allocation failed");
         ctrdl_freeELF(out);
         return false;
     }
 
     if (!stream->read(stream, out->symEntries, out->numSymChains * sizeof(Elf32_Sym))) {
-        ctrdl_setLastError(Err_ReadFailed);
+        ctrdl_setLastError("Sym entries read failed");
         ctrdl_freeELF(out);
         return false;
     }
@@ -195,33 +195,33 @@ bool ctrdl_parseELF(CTRDLStream* stream, CTRDLElf* out) {
     // Read string table.
     Elf32_Dyn strtab;
     if (!ctrdl_getELFDynEntryWithTag(out, DT_STRTAB, &strtab)) {
-        ctrdl_setLastError(Err_InvalidObject);
+        ctrdl_setLastError("String table missing");
         ctrdl_freeELF(out);
         return false;
     }
 
     if (!stream->seek(stream, strtab.d_un.d_ptr)) {
-        ctrdl_setLastError(Err_ReadFailed);
+        ctrdl_setLastError("String table dynamic entry read failed");
         ctrdl_freeELF(out);
         return false;
     }
 
     Elf32_Dyn strsz;
     if (!ctrdl_getELFDynEntryWithTag(out, DT_STRSZ, &strsz)) {
-        ctrdl_setLastError(Err_InvalidObject);
+        ctrdl_setLastError("String table size missing");
         ctrdl_freeELF(out);
         return false;
     }
 
     out->stringTable = malloc(strsz.d_un.d_val);
     if (!out->stringTable) {
-        ctrdl_setLastError(Err_NoMemory);
+        ctrdl_setLastError("String table allocation failed");
         ctrdl_freeELF(out);
         return false;
     }
 
     if (!stream->read(stream, out->stringTable, strsz.d_un.d_val)) {
-        ctrdl_setLastError(Err_ReadFailed);
+        ctrdl_setLastError("String table read failed");
         ctrdl_freeELF(out);
         return false;
     }
@@ -249,7 +249,7 @@ bool ctrdl_parseELF(CTRDLStream* stream, CTRDLElf* out) {
                 out->relaArraySize = numActuallyJmpRel;
                 break;
             default:
-                ctrdl_setLastError(Err_InvalidObject);
+                ctrdl_setLastError("Invalid jmprel relocation type %u", jmpRelType.d_un.d_val);
                 ctrdl_freeELF(out);
                 return false;
         }
@@ -272,19 +272,19 @@ bool ctrdl_parseELF(CTRDLStream* stream, CTRDLElf* out) {
     if (out->relArraySize) {
         out->relArray = malloc(out->relArraySize * sizeof(Elf32_Rel));
         if (!out->relArray) {
-            ctrdl_setLastError(Err_NoMemory);
+            ctrdl_setLastError("Rel array allocation failed");
             ctrdl_freeELF(out);
             return false;
         }
 
         if (!stream->seek(stream, relArray.d_un.d_ptr)) {
-            ctrdl_setLastError(Err_ReadFailed);
+            ctrdl_setLastError("Rel array read failed");
             ctrdl_freeELF(out);
             return false;
         }
 
         if (!stream->read(stream, out->relArray, numActuallyRel * sizeof(Elf32_Rel))) {
-            ctrdl_setLastError(Err_ReadFailed);
+            ctrdl_setLastError("Rel array read failed");
             ctrdl_freeELF(out);
             return false;
         }
@@ -307,19 +307,19 @@ bool ctrdl_parseELF(CTRDLStream* stream, CTRDLElf* out) {
     if (out->relaArraySize) {
         out->relaArray = malloc(out->relaArraySize * sizeof(Elf32_Rela));
         if (!out->relaArray) {
-            ctrdl_setLastError(Err_NoMemory);
+            ctrdl_setLastError("Rela array allocation failed");
             ctrdl_freeELF(out);
             return false;
         }
 
         if (!stream->seek(stream, relaArray.d_un.d_ptr)) {
-            ctrdl_setLastError(Err_ReadFailed);
+            ctrdl_setLastError("Rela array read failed");
             ctrdl_freeELF(out);
             return false;
         }
 
         if (!stream->read(stream, out->relaArray, numActuallyRela * sizeof(Elf32_Rela))) {
-            ctrdl_setLastError(Err_ReadFailed);
+            ctrdl_setLastError("Rela array read failed");
             ctrdl_freeELF(out);
             return false;
         }
@@ -338,13 +338,13 @@ bool ctrdl_parseELF(CTRDLStream* stream, CTRDLElf* out) {
         }
 
         if (!stream->seek(stream, jmpRelArray.d_un.d_ptr)) {
-            ctrdl_setLastError(Err_ReadFailed);
+            ctrdl_setLastError("Jmprel array read failed");
             ctrdl_freeELF(out);
             return false;
         }
 
         if (!stream->read(stream, dst, toRead)) {
-            ctrdl_setLastError(Err_ReadFailed);
+            ctrdl_setLastError("Jmprel array read failed");
             ctrdl_freeELF(out);
             return false;
         }

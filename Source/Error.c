@@ -6,48 +6,39 @@
 
 #include "Error.h"
 
-static __thread size_t g_LastError = (size_t)Err_OK;
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
 
-CTRDLError ctrdl_getLastError(void) {
-	const CTRDLError error = (CTRDLError)g_LastError;
-	ctrdl_clearLastError();
-	return error;
+static __thread char* g_ErrorBuffer = NULL;
+static __thread int g_HasError = 0;
+
+static void lazyInitBuffer(void) {
+    if (!g_ErrorBuffer) {
+        g_ErrorBuffer = calloc(1, 512);
+
+        if (!g_ErrorBuffer)
+            svcBreak(USERBREAK_PANIC);
+    }
 }
 
-void ctrdl_setLastError(CTRDLError error) { g_LastError = (size_t)error; }
-void ctrdl_clearLastError(void) { ctrdl_setLastError(Err_OK); }
+void ctrdl_setLastError(const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
 
-const char* ctrdl_getErrorAsString(CTRDLError error) {
-	switch (error) {
-		case Err_InvalidParam:
-			return "invalid parameter";
-		case Err_ReadFailed:
-			return "could not read input file";
-		case Err_NoMemory:
-			return "no memory";
-		case Err_HandleLimit:
-			return "hit the handle limit";
-		case Err_NotFound:
-			return "not found";
-		case Err_InvalidObject:
-			return "invalid object";
-		case Err_InvalidBit:
-			return "the object is not 32-bit";
-		case Err_NotSO:
-			return "the object is not shared";
-		case Err_InvalidArch:
-			return "invalid architecture";
-		case Err_MapFailed:
-			return "could not map object";
-		case Err_RelocFailed:
-			return "relocation failed";
-		case Err_DepsLimit:
-			return "too many dependencies";
-		case Err_DepFailed:
-			return "could not load dependency";
-		case Err_FreeFailed:
-			return "could not unload object";
-	};
+    lazyInitBuffer();
+    g_HasError = 1;
 
-	return NULL;
+    vsnprintf(g_ErrorBuffer, 512, fmt, args);
 }
+
+const char* ctrdl_getLastError(void) {
+    if (g_HasError) {
+        g_HasError = 0;
+        return g_ErrorBuffer;
+    }
+
+    return NULL;
+}
+
+void ctrdl_clearLastError(void) { g_HasError = 0; }

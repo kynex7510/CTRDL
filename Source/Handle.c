@@ -127,7 +127,7 @@ CTRDLHandle* ctrdl_createHandle(const char* path, size_t flags) {
         pathSize = strlen(path);
         pathCopy = malloc(pathSize + 1);
         if (!pathCopy) {
-            ctrdl_setLastError(Err_NoMemory);
+            ctrdl_setLastError("Path buffer allocation failed");
             return NULL;
         }
     }
@@ -135,7 +135,7 @@ CTRDLHandle* ctrdl_createHandle(const char* path, size_t flags) {
     ctrdl_acquireHandleMtx();
 
     if (ctrdl_handleListIsFull()) {
-        ctrdl_setLastError(Err_HandleLimit);
+        ctrdl_setLastError("Hit handle limit");
         ctrdl_releaseHandleMtx();
         return NULL;
     }
@@ -144,14 +144,14 @@ CTRDLHandle* ctrdl_createHandle(const char* path, size_t flags) {
     CTRDLHandle* handle = malloc(sizeof(CTRDLHandle));
     if (!handle) {
         ctrdl_releaseHandleMtx();
-        ctrdl_setLastError(Err_NoMemory);
+        ctrdl_setLastError("Handle allocation failed");
         free(pathCopy);
         return NULL;
     }
 
     // Insert handle in list.
     if (!ctrdl_handleListInsert(handle)) {
-        ctrdl_setLastError(Err_NoMemory);
+        ctrdl_setLastError("Handle list allocation failed");
         free(handle);
         free(pathCopy);
     }
@@ -210,7 +210,7 @@ bool ctrdl_unlockHandle(CTRDLHandle* handle) {
 
         ctrdl_releaseHandleMtx();
     } else {
-        ctrdl_setLastError(Err_InvalidParam);
+        ctrdl_setLastError("Attempted to unlock %s handle", handle ? "main" : "NULL");
         ret = false;
     }
 

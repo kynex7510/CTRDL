@@ -31,7 +31,7 @@ static bool ctrdl_checkFlags(int flags) {
 }
 
 void* dlopen(const char* path, int flags) { return ctrdlOpen(path, flags, NULL, NULL); }
-const char* dlerror(void) { return ctrdl_getErrorAsString(ctrdl_getLastError()); }
+const char* dlerror(void) { return ctrdl_getLastError(); }
 
 int dlclose(void* handle) {
     if (handle != CTRDL_MAIN_HANDLE)
@@ -41,8 +41,13 @@ int dlclose(void* handle) {
 }
 
 void* dlsym(void* handle, const char* name) {
-    if (!handle || !name) {
-        ctrdl_setLastError(Err_InvalidParam);
+    if (!handle) {
+        ctrdl_setLastError("Handle is NULL");
+        return NULL;
+    }
+
+    if (!name) {
+        ctrdl_setLastError("Name is NULL");
         return NULL;
     }
 
@@ -70,7 +75,7 @@ void* dlsym(void* handle, const char* name) {
         }
 
         if (!addr)
-            ctrdl_setLastError(Err_NotFound);
+            ctrdl_setLastError("Not found");
 
         return addr;
     }
@@ -81,7 +86,7 @@ void* dlsym(void* handle, const char* name) {
     if (sym)
         return (void*)(ctrlPageIndexToAddr(h->basePage) + sym->st_value);
 
-    ctrdl_setLastError(Err_NotFound);
+    ctrdl_setLastError("Not found");
     return NULL;
 }
 
@@ -114,7 +119,7 @@ int dladdr(const void* address, Dl_info* info) {
 
 void* ctrdlOpen(const char* path, int flags, CTRDLResolverFn resolver, void* resolverUserData) {
     if (!ctrdl_checkFlags(flags)) {
-        ctrdl_setLastError(Err_InvalidParam);
+        ctrdl_setLastError("Invalid flags");
         return NULL;
     }
 
@@ -141,14 +146,14 @@ void* ctrdlOpen(const char* path, int flags, CTRDLResolverFn resolver, void* res
     ctrdl_releaseHandleMtx();
 
     if (flags & RTLD_NOLOAD) {
-        ctrdl_setLastError(Err_NotFound);
+        ctrdl_setLastError("Module is not loaded");
         return NULL;
     }
 
     // Open file for reading.
     FILE* f = fopen(path, "rb");
     if (!f) {
-        ctrdl_setLastError(Err_NotFound);
+        ctrdl_setLastError("File open failed");
         return NULL;
     }
 
@@ -167,8 +172,13 @@ void* ctrdlFOpen(FILE* f, int flags, CTRDLResolverFn resolver, void* resolverUse
 }
 
 void* ctrdlStreamOpen(CTRDLStream* stream, int flags, CTRDLResolverFn resolver, void* resolverUserData) {
-    if (!stream || !ctrdl_checkFlags(flags) || (flags & RTLD_NOLOAD)) {
-        ctrdl_setLastError(Err_InvalidParam);
+    if (!stream) {
+        ctrdl_setLastError("Stream is NULL");
+        return NULL;
+    }
+    
+    if (!ctrdl_checkFlags(flags) || (flags & RTLD_NOLOAD)) {
+        ctrdl_setLastError("Invalid flags");
         return NULL;
     }
 
@@ -176,8 +186,18 @@ void* ctrdlStreamOpen(CTRDLStream* stream, int flags, CTRDLResolverFn resolver, 
 }
 
 void* ctrdlMap(const void* buffer, size_t size, int flags, CTRDLResolverFn resolver, void* resolverUserData) {
-    if (!buffer || !size || !ctrdl_checkFlags(flags) || (flags & RTLD_NOLOAD)) {
-        ctrdl_setLastError(Err_InvalidParam);
+    if (!buffer) {
+        ctrdl_setLastError("Buffer is NULL");
+        return NULL;
+    }
+
+    if (!size) {
+        ctrdl_setLastError("Size is NULL");
+        return NULL;
+    }
+    
+    if (!ctrdl_checkFlags(flags) || (flags & RTLD_NOLOAD)) {
+        ctrdl_setLastError("Invalid flags");
         return NULL;
     }
 
@@ -192,7 +212,7 @@ void* ctrdlHandleByAddress(u32 addr) {
     if (handle) {
         ctrdl_lockHandle(handle);
     } else {
-        ctrdl_setLastError(Err_NotFound);
+        ctrdl_setLastError("Not found");
     }
     ctrdl_releaseHandleMtx();
     return handle;
@@ -210,7 +230,7 @@ void* ctrdlThisHandle(void) {
 
 void ctrdlEnumerate(CTRDLEnumerateFn callback) {
     if (!callback) {
-        ctrdl_setLastError(Err_InvalidParam);
+        ctrdl_setLastError("Callback is NULL");
         return;
     }
 
@@ -225,8 +245,13 @@ void ctrdlEnumerate(CTRDLEnumerateFn callback) {
 }
 
 bool ctrdlInfo(void* handle, CTRDLInfo* info) {
+    if (!handle) {
+        ctrdl_setLastError("Handle is NULL");
+        return false;
+    }
+
     if (!handle || !info) {
-        ctrdl_setLastError(Err_InvalidParam);
+        ctrdl_setLastError("Info is NULL");
         return false;
     }
 
@@ -250,7 +275,7 @@ bool ctrdlInfo(void* handle, CTRDLInfo* info) {
             memcpy(info->path, h->path, info->pathSize);
             info->path[info->pathSize] = '\0';
         } else {
-            ctrdl_setLastError(Err_NoMemory);
+            ctrdl_setLastError("Path allocation failed");
             success = false;
         }
     } else {
