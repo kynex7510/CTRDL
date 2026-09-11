@@ -5,7 +5,7 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 project(dl)
 
-CPMAddPackage("gh:kynex7510/CTRL#5be4859")
+CPMAddPackage("gh:kynex7510/CTRL#738182e")
 
 set(DL_SOURCES
     Source/API.c
