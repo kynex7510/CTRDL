@@ -99,6 +99,7 @@ static u32 ctrdl_resolveSymbol(const RelContext* ctx, Elf32_Word index, bool* is
 
 static bool ctrdl_handleSingleReloc(RelContext* ctx, RelEntry* entry) {
     u32* dst = (u32*)entry->offset;
+
     switch (entry->type) {
         case R_ARM_RELATIVE:
             if (entry->addend) {
@@ -116,7 +117,11 @@ static bool ctrdl_handleSingleReloc(RelContext* ctx, RelEntry* entry) {
             } else if (entry->isWeak) {
                 return true;
             }
+
+            ctrdl_setLastError("Missing symbol");
             break;
+        default:
+            ctrdl_setLastError("Unknown relocation type %u", (uint32_t)entry->type);
     }
 
     return false;
@@ -133,6 +138,12 @@ static bool ctrdl_handleRel(RelContext* ctx) {
 
             entry.offset = ctrlPageIndexToAddr(ctx->handle->basePage) + rel->r_offset;
             entry.symbol = ctrdl_resolveSymbol(ctx, ELF32_R_SYM(rel->r_info), &entry.isWeak);
+
+            if (!entry.symbol && !entry.isWeak) {
+                ctrdl_setLastError("Resolution failed for non-weak symbol %u", ELF32_R_SYM(rel->r_info));
+                return false;
+            }
+
             entry.addend = 0;
             entry.type = ELF32_R_TYPE(rel->r_info);
 
@@ -156,6 +167,12 @@ static bool ctrdl_handleRela(RelContext* ctx) {
 
             entry.offset = ctrlPageIndexToAddr(ctx->handle->basePage) + rela->r_offset;
             entry.symbol = ctrdl_resolveSymbol(ctx, ELF32_R_SYM(rela->r_info), &entry.isWeak);
+
+            if (!entry.symbol && !entry.isWeak) {
+                ctrdl_setLastError("Resolution failed for non-weak symbol %u", ELF32_R_SYM(rela->r_info));
+                return false;
+            }
+
             entry.addend = rela->r_addend;
             entry.type = ELF32_R_TYPE(rela->r_info);
 

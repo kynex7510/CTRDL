@@ -237,7 +237,7 @@ static bool ctrdl_mapObject(LdrData* ldrData) {
 
     // Apply relocations.
     if (!ctrdl_handleRelocs(handle, &ldrData->elf, ldrData->resolver, ldrData->resolverUserData)) {
-        ctrdl_setLastError("Relocation failed");
+        // Last error has already been set.
         ctrdl_unloadObject(handle);
         free(loadSegments);
         return false;
