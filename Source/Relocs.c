@@ -19,6 +19,7 @@ typedef struct {
 } RelContext;
 
 typedef struct {
+  Elf32_Word symIndex;
   uintptr_t offset;
   uintptr_t symbol;
   uint32_t addend;
@@ -118,7 +119,7 @@ static bool ctrdl_handleSingleReloc(RelContext* ctx, RelEntry* entry) {
                 return true;
             }
 
-            ctrdl_setLastError("Missing symbol");
+            ctrdl_setLastError("Resolution failed for non-weak symbol %u", entry->symIndex);
             break;
         default:
             ctrdl_setLastError("Unknown relocation type %u", (uint32_t)entry->type);
@@ -136,14 +137,9 @@ static bool ctrdl_handleRel(RelContext* ctx) {
             RelEntry entry;
             const Elf32_Rel* rel = &relArray[i];
 
+            entry.symIndex = ELF32_R_SYM(rel->r_info);
             entry.offset = ctrlPageIndexToAddr(ctx->handle->basePage) + rel->r_offset;
-            entry.symbol = ctrdl_resolveSymbol(ctx, ELF32_R_SYM(rel->r_info), &entry.isWeak);
-
-            if (!entry.symbol && !entry.isWeak) {
-                ctrdl_setLastError("Resolution failed for non-weak symbol %u", ELF32_R_SYM(rel->r_info));
-                return false;
-            }
-
+            entry.symbol = ctrdl_resolveSymbol(ctx, entry.symIndex, &entry.isWeak);
             entry.addend = 0;
             entry.type = ELF32_R_TYPE(rel->r_info);
 
@@ -165,14 +161,9 @@ static bool ctrdl_handleRela(RelContext* ctx) {
             RelEntry entry;
             const Elf32_Rela* rela = &relaArray[i];
 
+            entry.symIndex = ELF32_R_SYM(rela->r_info);
             entry.offset = ctrlPageIndexToAddr(ctx->handle->basePage) + rela->r_offset;
-            entry.symbol = ctrdl_resolveSymbol(ctx, ELF32_R_SYM(rela->r_info), &entry.isWeak);
-
-            if (!entry.symbol && !entry.isWeak) {
-                ctrdl_setLastError("Resolution failed for non-weak symbol %u", ELF32_R_SYM(rela->r_info));
-                return false;
-            }
-
+            entry.symbol = ctrdl_resolveSymbol(ctx, entry.symIndex, &entry.isWeak);
             entry.addend = rela->r_addend;
             entry.type = ELF32_R_TYPE(rela->r_info);
 
