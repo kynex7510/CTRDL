@@ -57,7 +57,7 @@ const Elf32_Sym* ctrdl_symNameLookupSingle(CTRDLHandle* handle, const char* name
 
             while (chainIndex != STN_UNDEF) {
                 const Elf32_Sym* sym = &handle->symEntries[chainIndex];
-                if (!strcmp(&handle->stringTable[sym->st_name], name)) {
+                if (sym->st_shndx != SHN_UNDEF && !strcmp(&handle->stringTable[sym->st_name], name)) {
                     found = sym;
                     break;
                 }
@@ -132,7 +132,7 @@ const Elf32_Sym* ctrdl_symValueLookupSingle(CTRDLHandle* handle, Elf32_Word valu
                 continue;
 
             const Elf32_Sym* sym = &handle->symEntries[i];
-            if ((sym->st_value >= value) && (value < (sym->st_value + sym->st_size))) {
+            if (sym->st_shndx != SHN_UNDEF && (sym->st_value >= value) && (value < (sym->st_value + sym->st_size))) {
                 found = sym;
                 break;
             }
